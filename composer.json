@@ -1,0 +1,28 @@
+{
+    "name": "mongodb-to-wordpress-migration",
+    "description": "A script to migrate articles from MongoDB to WordPress with WPML support",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "mongodb/mongodb": "^1.12",
+        "ext-mysqli": "*",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "authors": [
+        {
+            "name": "WordPress Migration Tool",
+            "role": "Developer"
+        }
+    ],
+    "minimum-stability": "stable",
+    "autoload": {
+        "files": [
+            "mongodb-to-wp-migration.php"
+        ]
+    },
+    "scripts": {
+        "test": "php test-migration.php",
+        "migrate": "php mongodb-to-wp-migration.php"
+    }
+}

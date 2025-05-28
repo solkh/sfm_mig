@@ -1,0 +1,187 @@
+term_id,category_name
+1,غير مصنف
+12,no categories
+16,غير مصنف
+60,المكتب السياسي
+74,المكتب الإعلامي
+80,بيانات المكتب السياسي
+88,بيانات المكتب الإعلامي
+107,أغاني الثورة
+114,المكتب الديني
+116,بيانات المكتب الديني
+135,Media Office
+137,Press Releases of Media Office
+175,مناسبات دينية
+179,Political office
+198,مكتب الأسرة
+220,مكتب الرئاسة
+249,درع التيار
+262,المكتب التنظيمي
+264,أوراق تيار المستقبل السوري
+288,المكتب العلمي
+347,المكتب الاقتصادي
+353,الأخبار
+360,المكاتب الرئيسية
+370,تهنئة رسمية
+400,دعوات رسمية
+412,مشاريع إغاثية
+423,اجتماعات وزيارات
+550,قسم البحوث و الدراسات
+576,بيانات المكتب العلمي
+588,قسم شؤون المرأة
+592,قسم شؤون الأسرة
+714,بحوث
+726,دراسات
+838,مشاريع طبية وإسعافية
+847,سلسلة التدريبات الطبية والإسعافية
+851,"حملة ""في توادّهم"" لتقديم العلاج"
+869,"حملة ""في توادّهم"" إفطار صائم"
+913,من ذاكرة الثورة السورية
+926,مقالات
+945,بودكاست تيار المستقبل السوري
+997,باحثون مستقلون
+1005,د. باسل معراوي
+1085,أبو فيصل الحمصي
+1127,جعفر الصادق طحان
+1140,كُتب وكُتّاب
+1160,خبرٌ وتعليق
+1248,د. سعد الدين البزرة
+1370,برنامج: آية وغاية
+1398,بيان تهنئة
+1516,رموز وأعلام الدّولة في سورية
+1526,سلسلة القراءة المطلوبة (6)
+1536,د محمود وزاز
+1567,حلم المستقبل السوري
+1573,كاريكاتير الثورة السورية
+1659,رسائل التيار
+1680,نجاحاتٌ سوريّة
+1700,د. سامح عيسى
+1740,د. مها ديرية
+1769,قسم شؤون الشباب
+1796,ضيوف التيار
+1853,فرهاد ركن الدين
+2112,مكتب الفعاليات
+2158,مقال / تصريح
+2239,"حملة ""في توادّهم"" حفر آبار"
+2241,بيانات المكتب الاقتصادي
+2245,"حملة ""في توادّهم"" ذبح الأضاحي"
+2249,أنشطة رئيس التيار
+2269,مقابلات تلفزيونية
+2281,سلسلة مدارس تواد التعليمية
+2285,قسم بناء القدرة وتطوير الذات
+2329,حاجتنا إلى فقهٍ جديد
+2333,مشاريع تعليمية
+2337,في توادّهم
+2378,قرارات / تكليف
+2401,بيانات مكتب شؤون الأسرة
+2492,فيديوهات
+2521,بحوث سياسية
+2525,دراسات سياسية
+2531,مقالات سياسية
+2533,منوعات
+2539,بحوث إعلامية
+2541,دراسات إعلامية
+2547,مقالات إعلامية
+2551,دراسات شؤون الأسرة
+2553,مقالات شؤون الأسرة
+2561,بحوث اقتصادية
+2563,دراسات اقتصادية
+2565,مقالات اقتصادية
+2575,دراسات دينية
+2577,مقالات دينية
+2585,سلسلة التدريبات
+2589,فيديوهات تعليمية
+2593,حملة “في توادّهم” توزيع خبز
+2595,فعاليات تعليمية
+2602,كاتبوا التيار
+2626,عفراء الحداد
+2628,بلال محيي الدين
+2630,مصطفى المحمد
+2632,إيمان المحمد
+2634,جاكلين ك الشامي
+2636,سيرين الحلبي
+2638,إبراهيم مصطفى
+2640,إيناس نصر الدين
+2642,إلياس عبد المسيح
+2644,وهيبة المصري
+2861,(SFM) massages Podcast
+2901,Economic Studies
+2903,Educational Activities
+2905,Educational projects
+2907,Educational Videos
+2945,Medal of the (SFM)
+2947,Media Articles
+2955,Meetings and Visits
+2957,memory of the Syrian revolution
+2959,Miscellaneous
+2963,News
+2965,News and Commentary
+2975,Political Articles
+2979,Political Research
+2981,Political Studies
+2987,Program: Verse and Purpose
+3013,Series of Training Sessions
+3017,SFutureM Podcast
+3029,Statement of Congratulations
+3043,Symbols and Figures of the State in Syria
+3045,Syrian Achievements
+3047,Syrian Revolution Caricatures
+3049,Tawad Educational Series Schools
+3061,The Syrian Future Dream
+3065,TV interviews
+3067,Videos
+3140,press release of Political office
+3187,Media Studies
+3195,FEE TAWADDHIM Bread Distribution Campaign
+3255,د. لميس ابو عساف
+3257,Dr. Lamis Abo Assaf
+3436,كتب ( صادر / وارد )
+3438,Letters ( Issued / Received )
+3678,تصاميم التيار
+3680,SFM's Designs
+3697,ريلز التيار
+3699,The SFM's Reels
+3820,التيار ومواقع أخرى
+3822,The SFM and other sites
+4579,ورش عمل / مؤتمرات
+4581,Workshops / Conferences
+4660,Main Offices
+4661,Economic Office
+4662,Economic Research
+4663,Press Release of Economic Office
+4664,Economic Articles
+4665,Regulatory Office
+4666,Papers of The Syrian Future Movement
+4667,Religious Office
+4668,Press Release of Religious Office
+4669,Religious Studies
+4670,Required Reading Series 6
+4671,Our Need for New Fiqh
+4672,Religious Articles
+4673,Religious Occasions
+4674,Scientific Office
+4675,Press Release of Scientific Office
+4676,Research and Studies Department
+4677,Independent Researchers
+4678,Abu Faisal Al-Homsy
+4679,Jaafar Al-Sadiq Tahan
+4680,Dr Basel Maarawi
+4681,Research
+4682,Studies
+4683,Books and Writers
+4684,Articles
+4685,Family Office
+4686,Events Office
+4687,Medical and Ambulance Projects
+4688,Presidency Office
+4689,Videos
+4690,Media Articles
+4691,Article Statement
+4692,Guests of The SFM
+4693,President Activities
+4694,Political Articles
+4695,Political Research
+4696,TV Interviews
+4697,Statement of Congratulations
+4698,Meetings and Visits
+4699,Fee Tawaddhim
