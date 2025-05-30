@@ -24,7 +24,7 @@ if (!class_exists('MongoDB\Client')) {
 // Override configuration for testing
 $config = [
     // MongoDB connection (use test database)
-    'mongo_uri' => 'mongodb://root:b84m9FjK1n3phU9HdsoJA86QrLXqwePJOqH1YHAiJU5Ee5EgnFjTts6faXUrrBIl@localhost:27017',
+    'mongo_uri' => 'mongodb://root:b84m9FjK1n3phU9HdsoJA86QrLXqwePJOqH1YHAiJU5Ee5EgnFjTts6faXUrrBIl@MongoDb:27017',
     'mongo_db' => 'future-project',
     'mongo_collection' => 'articles',
 
