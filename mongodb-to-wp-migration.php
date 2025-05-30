@@ -801,4 +801,7 @@ function logError($message)
 }
 
 // Run the script
-main();
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) {
+    // Only run main() if this script is being executed directly, not included
+    main();
+}
