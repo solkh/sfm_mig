@@ -637,11 +637,11 @@ function processAndAttachImage($imageUrl, $postId, $language, $date)
             VALUES 
             ('{$wpdb->escape_string($attachment['post_title'])}', 
              '{$attachment['post_content']}', 
-             '', /* Add empty post_excerpt */
-             '', /* Add empty to_ping */
-             '', /* Add empty pinged */
-             '', /* Add empty post_content_filtered */
-             '', 
+             '', /* post_excerpt */
+             '', /* to_ping */
+             '', /* pinged */
+             '', /* post_content_filtered */
+             '', /* post_name */
              '{$date}', 
              '{$date}', 
              '{$date}', 
@@ -650,7 +650,7 @@ function processAndAttachImage($imageUrl, $postId, $language, $date)
              {$config['wp_author_id']}, 
              'attachment', 
              'closed', 
-             'closed'
+             'closed',
              '{$attachment['post_mime_type']}', 
              $postId, 
              '{$wpdb->escape_string($imageUrl)}')");
