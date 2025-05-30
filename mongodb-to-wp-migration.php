@@ -88,7 +88,7 @@ $config = [
 
     // Elementor Theme Builder support
     'enable_theme_builder_support' => true, // Set to true to ensure compatibility with Elementor Theme Builder
-    'theme_builder_template_id' => '', // Optional: Specific template ID to use (leave empty to use default)
+    'theme_builder_template_id' => '37280', // Optional: Specific template ID to use (leave empty to use default)
 ];
 
 // Initialize global variables
@@ -707,9 +707,8 @@ function addThemeBuilderCompatibility($postId)
 
         $templates = $wpdb->query($templateQuery)->fetch_all();
 
-        if (empty($templates)) {
+        if ($templates === false || count($templates) === 0) {
             logMessage("No Elementor Theme Builder templates found for single posts");
-            return;
         }
 
         // Get the specific template ID if provided, otherwise use the first available template
