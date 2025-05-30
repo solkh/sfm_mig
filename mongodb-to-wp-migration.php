@@ -715,6 +715,8 @@ function processAndAttachImage($imageUrl, $postId, $language, $date)
  */
 function downloadFile($url, $path)
 {
+    logMessage("Downloading file from $url to $path");
+
     $ch = curl_init($url);
     $fp = fopen($path, 'wb');
 
