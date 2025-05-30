@@ -703,7 +703,7 @@ function addThemeBuilderCompatibility($postId)
         // First, check if there are any Elementor Theme Builder templates for single posts
         $templateQuery = "SELECT post_id FROM {$config['wp_prefix']}postmeta 
             WHERE meta_key = '_elementor_template_type' 
-            AND meta_value = 'single'";
+            AND meta_value = 'single-post'";
 
         $templates = $wpdb->query($templateQuery);
 
