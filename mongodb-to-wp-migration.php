@@ -802,7 +802,10 @@ function getImageDimensions($path)
  */
 function downloadFile($url, $path)
 {
-    logMessage("Downloading file from $url to $path");
+    if (!$url || !$path) {
+        logError("Invalid URL or path provided for download.");
+        return false;
+    }
 
     $ch = curl_init($url);
     $fp = fopen($path, 'wb');
