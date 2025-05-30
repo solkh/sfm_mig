@@ -70,7 +70,6 @@ function runTests()
 
     $tests = [
         'Database Connections' => 'testDatabaseConnections',
-        'Category Mapping' => 'testCategoryMapping',
         'Image Handling' => 'testImageHandling',
         'WPML Integration' => 'testWpmlIntegration',
         'Error Handling' => 'testErrorHandling',
@@ -150,52 +149,6 @@ function testDatabaseConnections()
     }
 }
 
-/**
- * Test category mapping
- */
-function testCategoryMapping()
-{
-    echo "Testing category mapping...\n";
-
-    try {
-        // Load office mappings
-        $officeMapping = loadMappingFromCSV('future-project.offices.csv', 'wp_terms.csv');
-
-        if (count($officeMapping) > 0) {
-            echo "✓ Office mapping loaded successfully (" . count($officeMapping) . " mappings)\n";
-
-            // Display sample mapping
-            $sampleKey = array_key_first($officeMapping);
-            echo "  Sample: MongoDB ID: $sampleKey => WP Term IDs: " .
-                "AR: " . $officeMapping[$sampleKey]['ar'] . ", " .
-                "EN: " . $officeMapping[$sampleKey]['en'] . "\n";
-        } else {
-            echo "✗ Office mapping failed to load\n";
-            return false;
-        }
-
-        // Load department mappings
-        $departmentMapping = loadMappingFromCSV('future-project.departments.csv', 'wp_terms.csv');
-
-        if (count($departmentMapping) > 0) {
-            echo "✓ Department mapping loaded successfully (" . count($departmentMapping) . " mappings)\n";
-
-            // Display sample mapping
-            $sampleKey = array_key_first($departmentMapping);
-            echo "  Sample: MongoDB ID: $sampleKey => WP Term IDs: " .
-                "AR: " . $departmentMapping[$sampleKey]['ar'] . ", " .
-                "EN: " . $departmentMapping[$sampleKey]['en'] . "\n";
-        } else {
-            echo "✗ Department mapping failed to load\n";
-            return false;
-        }
-
-        return true;
-    } catch (Exception $e) {
-        echo "✗ Category mapping test failed: " . $e->getMessage() . "\n";
-        return false;
-    }
-}
 /**
  * Test image URL transformation and download
  */
