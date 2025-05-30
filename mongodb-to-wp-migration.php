@@ -141,7 +141,7 @@ function initializeConnections()
 
         // Connect to WordPress database
         logMessage("Connecting to WordPress database...");
-        $wpdb = new mysqli(
+        $wpdb = new \mysqli(
             $config['wp_host'],
             $config['wp_user'],
             $config['wp_pass'],
@@ -188,7 +188,7 @@ function migrateArticles()
     // Build query with date filter if enabled
     $query = ['state' => 'published'];
     if ($config['use_date_filter'] && !empty($config['import_date_filter'])) {
-        $dateFilter = new MongoDB\BSON\UTCDateTime(strtotime($config['import_date_filter']) * 1000);
+        $dateFilter = new \MongoDB\BSON\UTCDateTime(strtotime($config['import_date_filter']) * 1000);
         $query['dateOfPublished'] = ['$gte' => $dateFilter];
         logMessage("Applied date filter: dateOfPublished >= {$config['import_date_filter']}");
     }
