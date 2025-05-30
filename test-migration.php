@@ -114,8 +114,20 @@ function testDatabaseConnections()
             'username' => $config['mongo_user'] ?? null,
             'password' => $config['mongo_pass'] ?? null,
         ]);
-        $adminDb = $mongoClient->admin;
-        $result = $adminDb->command(['ping' => 1]);
+        $collection = $mongoClient->{$config['mongo_db']}->{$config['mongo_collection']};
+
+        // Build query with date filter if enabled
+        $totalArticles = $collection->countDocuments(['state' => 'published']);
+
+        if ($totalArticles > 0) {
+            echo "✓ MongoDB connection successful\n";
+            echo "Found $totalArticles articles in MongoDB collection '{$config['mongo_collection']}'\n";
+        } else {
+            echo "✗ MongoDB connection successful but no articles found in collection '{$config['mongo_collection']}'\n";
+            return false;
+        }
+
+        logMessage("Found $totalArticles articles to migrate.");
 
         // Use a simpler ping approach
         try {
