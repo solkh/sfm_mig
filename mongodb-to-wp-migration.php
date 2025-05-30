@@ -570,8 +570,8 @@ function linkTranslations($postId1, $postId2, $lang1, $lang2)
 
     try {
         // Get translation row ID (trid) for first post
-        $trid = $wpdb->get_var("SELECT trid FROM {$config['wp_prefix']}icl_translations 
-            WHERE element_id = $postId1 AND element_type = 'post_post'");
+        $trid = mysqli_num_rows($wpdb->query("SELECT trid FROM {$config['wp_prefix']}icl_translations 
+            WHERE element_id = $postId1 AND element_type = 'post_post'"));
 
         if (!$trid) {
             // Create new trid
@@ -579,8 +579,8 @@ function linkTranslations($postId1, $postId2, $lang1, $lang2)
                 SET trid = (SELECT MAX(trid) + 1 FROM {$config['wp_prefix']}icl_translations) 
                 WHERE element_id = $postId1 AND element_type = 'post_post'");
 
-            $trid = $wpdb->get_var("SELECT trid FROM {$config['wp_prefix']}icl_translations 
-                WHERE element_id = $postId1 AND element_type = 'post_post'");
+            $trid = mysqli_num_rows($wpdb->query("SELECT trid FROM {$config['wp_prefix']}icl_translations 
+                WHERE element_id = $postId1 AND element_type = 'post_post'"));
         }
 
         // Update second post with same trid and source language
