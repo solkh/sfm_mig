@@ -1,5 +1,7 @@
 <?php
 
+namespace MongoWPMigration;
+
 /**
  * MongoDB to WordPress Migration Script
  * 
