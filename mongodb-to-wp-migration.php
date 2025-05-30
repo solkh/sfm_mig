@@ -705,16 +705,16 @@ function addThemeBuilderCompatibility($postId)
             WHERE meta_key = '_elementor_template_type' 
             AND meta_value = 'single'";
 
-        $templates = $wpdb->query($templateQuery)->fetch_all();
+        $templates = $wpdb->query($templateQuery);
 
-        if ($templates === false || count($templates) === 0) {
+        if ($templates->num_rows === 0) {
             logMessage("No Elementor Theme Builder templates found for single posts");
         }
 
         // Get the specific template ID if provided, otherwise use the first available template
         $templateId = !empty($config['theme_builder_template_id'])
             ? $config['theme_builder_template_id']
-            : $templates[0]->post_id;
+            : $templates->fetch_object()->post_id;
 
         logMessage("Using Elementor Theme Builder template ID: $templateId for post ID: $postId");
 
