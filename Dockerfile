@@ -34,5 +34,26 @@ COPY . /app/
 # Generate optimized autoloader
 RUN composer dump-autoload --optimize
 
-# Command to run when container starts
-CMD ["php", "-a"]
+# Add a health check script
+COPY <<'EOF' /app/health.php
+<?php
+echo "Health check OK\n";
+exit(0 );
+EOF
+
+# Add an entrypoint script that keeps the container running
+COPY <<'EOF' /app/entrypoint.sh
+#!/bin/sh
+echo "Migration container is ready. Connect to it using 'docker exec -it [container_id] bash'"
+echo "Then run: php test-migration.php"
+echo "And if tests pass: php mongodb-to-wp-migration.php"
+tail -f /dev/null
+EOF
+
+RUN chmod +x /app/entrypoint.sh
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD [ "php", "/app/health.php" ]
+
+# Use the entrypoint script to keep container running
+ENTRYPOINT ["/app/entrypoint.sh"]
