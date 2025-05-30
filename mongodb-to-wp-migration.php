@@ -788,6 +788,8 @@ function logMessage($message)
     if ($config['verbose']) {
         echo $logEntry . "\n";
     }
+    // Write log file
+    file_put_contents($config['log_file'], implode("\n", $log));
 }
 
 /**
