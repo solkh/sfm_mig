@@ -7,17 +7,14 @@
  * without actually performing the full migration.
  */
 
-// Include the main migration script
-require_once 'mongodb-to-wp-migration.php';
-
 // Override configuration for testing
 $config = [
-    // MongoDB connection
+    // MongoDB connection (use test database)
     'mongo_uri' => 'mongodb://root:b84m9FjK1n3phU9HdsoJA86QrLXqwePJOqH1YHAiJU5Ee5EgnFjTts6faXUrrBIl@localhost:27017',
     'mongo_db' => 'future-project',
     'mongo_collection' => 'articles',
 
-    // WordPress database connection
+    // WordPress database connection (use test database)
     'wp_host' => '193.203.191.187:3000',
     'wp_db' => 'default',
     'wp_user' => 'mariadb',
@@ -47,10 +44,50 @@ $config = [
 ];
 
 /**
+ * Run all tests
+ */
+function runTests()
+{
+    echo "=== MongoDB to WordPress Migration Script Tests ===\n\n";
+
+    $tests = [
+        'Database Connections' => 'testDatabaseConnections',
+        'Category Mapping' => 'testCategoryMapping',
+        'Image Handling' => 'testImageHandling',
+        'WPML Integration' => 'testWpmlIntegration',
+        'Error Handling' => 'testErrorHandling',
+    ];
+
+    $results = [];
+    $allPassed = true;
+
+    foreach ($tests as $name => $function) {
+        echo "\n=== Testing: $name ===\n";
+        $result = call_user_func($function);
+        $results[$name] = $result;
+
+        if (!$result) {
+            $allPassed = false;
+        }
+    }
+
+    echo "\n=== Test Summary ===\n";
+    foreach ($results as $name => $result) {
+        echo ($result ? "✓" : "✗") . " $name: " . ($result ? "PASSED" : "FAILED") . "\n";
+    }
+
+    echo "\nOverall Test Result: " . ($allPassed ? "PASSED" : "FAILED") . "\n";
+
+    return $allPassed;
+}
+
+/**
  * Test database connections
  */
 function testDatabaseConnections()
 {
+    global $config;
+
     echo "Testing database connections...\n";
 
     try {
@@ -134,6 +171,69 @@ function testCategoryMapping()
         return false;
     }
 }
+/**
+ * Load mapping from CSV files
+ * 
+ * 
+ * @param string $sourceFile MongoDB source CSV file
+ * @param string $wpTermsFile WordPress terms CSV file
+ * @return array Mapping between MongoDB IDs and WordPress term IDs
+ */
+function loadMappingFromCSV($sourceFile, $wpTermsFile)
+{
+    $mapping = [];
+    $wpTerms = [];
+
+    // Load WordPress terms
+    if (($handle = fopen($wpTermsFile, "r")) !== false) {
+        // Skip header row
+        fgetcsv($handle);
+
+        while (($data = fgetcsv($handle)) !== false) {
+            if (count($data) >= 2) {
+                $termId = $data[0];
+                $termName = $data[1];
+                $wpTerms[strtolower($termName)] = $termId;
+            }
+        }
+        fclose($handle);
+    } else {
+        throw new Exception("Could not open WordPress terms file: $wpTermsFile");
+    }
+
+    // Load source mappings
+    if (($handle = fopen($sourceFile, "r")) !== false) {
+        // Skip header row
+        fgetcsv($handle);
+
+        while (($data = fgetcsv($handle)) !== false) {
+            if (count($data) >= 3) {
+                $mongoId = $data[0];
+                $titleAr = $data[1];
+                $titleEn = $data[2];
+
+                // Find matching WordPress term IDs
+                $termIdAr = $wpTerms[strtolower($titleAr)] ?? null;
+                $termIdEn = $wpTerms[strtolower($titleEn)] ?? null;
+
+                if ($termIdAr || $termIdEn) {
+                    $mapping[$mongoId] = [
+                        'ar' => $termIdAr,
+                        'en' => $termIdEn,
+                        'title_ar' => $titleAr,
+                        'title_en' => $titleEn
+                    ];
+                }
+            }
+        }
+        fclose($handle);
+    } else {
+        throw new Exception("Could not open source mapping file: $sourceFile");
+    }
+
+    return $mapping;
+}
+
 
 /**
  * Test image URL transformation and download
@@ -297,44 +397,6 @@ function testErrorHandling()
         echo "✗ Error handling test failed: " . $e->getMessage() . "\n";
         return false;
     }
-}
-
-/**
- * Run all tests
- */
-function runTests()
-{
-    $tests = [
-        'Database Connections' => 'testDatabaseConnections',
-        'Category Mapping' => 'testCategoryMapping',
-        'Image Handling' => 'testImageHandling',
-        'WPML Integration' => 'testWpmlIntegration',
-        'Error Handling' => 'testErrorHandling',
-    ];
-
-    $results = [];
-    $allPassed = true;
-
-    echo "=== MongoDB to WordPress Migration Script Tests ===\n\n";
-
-    foreach ($tests as $name => $function) {
-        echo "\n=== Testing: $name ===\n";
-        $result = call_user_func($function);
-        $results[$name] = $result;
-
-        if (!$result) {
-            $allPassed = false;
-        }
-    }
-
-    echo "\n=== Test Summary ===\n";
-    foreach ($results as $name => $result) {
-        echo ($result ? "✓" : "✗") . " $name: " . ($result ? "PASSED" : "FAILED") . "\n";
-    }
-
-    echo "\nOverall Test Result: " . ($allPassed ? "PASSED" : "FAILED") . "\n";
-
-    return $allPassed;
 }
 
 // Run the tests
