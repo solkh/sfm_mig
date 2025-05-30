@@ -1,5 +1,19 @@
 <?php
 
+// Check if MongoDB extension is loaded
+if (!extension_loaded('mongodb')) {
+    die("MongoDB extension is not loaded. Please install the MongoDB PHP extension.");
+}
+
+// Require Composer autoloader
+require_once __DIR__ . '/vendor/autoload.php';
+
+// Verify MongoDB\Client class exists
+if (!class_exists('MongoDB\Client')) {
+    die("MongoDB\Client class not found. Please run 'composer install' to install dependencies.");
+}
+
+
 /**
  * Test script for MongoDB to WordPress Migration
  * 
