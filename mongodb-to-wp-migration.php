@@ -30,7 +30,7 @@ ini_set('memory_limit', '512M');     // 512MB memory limit
 // Configuration - Edit these values
 $config = [
     // MongoDB connection
-    'mongo_uri' => 'mongodb://ed_sfm:b84m9FjK1n3phU9HdsoJA86QrLXqwePJOqH1YHAiJU5Ee5EgnFjTts6faXUrrBIl@193.203.191.187:27017/future-project?authSource=future-project',
+    'mongo_uri' => 'mongodb://ed_sfm:b84m9FjK1n3phU9HdsoJA86QrLXqwePJOqH1YHAiJU5Ee5EgnFjTts6faXUrrBIl@193.203.191.187:27017',
     'mongo_db' => 'future-project',
     'mongo_collection' => 'articles',
 
