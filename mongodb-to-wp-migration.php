@@ -357,7 +357,7 @@ function createWordPressPost($article, $language)
         $wpdb->query('START TRANSACTION');
 
         // Prepare post data
-        $postDate = date('Y-m-d H:i:s', strtotime($article['dateOfPublished']['$date']));
+        $postDate = date('Y-m-d H:i:s', strtotime($article['dateOfPublished']));
 
         $postData = [
             'post_title' => $article['title'][$language],
@@ -365,8 +365,8 @@ function createWordPressPost($article, $language)
             'post_name' => $article['slug'][$language],
             'post_date' => $postDate,
             'post_date_gmt' => $postDate,
-            'post_modified' => date('Y-m-d H:i:s', strtotime($article['updatedAt']['$date'])),
-            'post_modified_gmt' => date('Y-m-d H:i:s', strtotime($article['updatedAt']['$date'])),
+            'post_modified' => date('Y-m-d H:i:s', strtotime($article['updatedAt'])),
+            'post_modified_gmt' => date('Y-m-d H:i:s', strtotime($article['updatedAt'])),
             'post_status' => 'publish',
             'post_author' => $config['wp_author_id'],
             'post_type' => 'post',
