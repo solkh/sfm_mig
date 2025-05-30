@@ -532,8 +532,8 @@ function setPostLanguage($postId, $language)
 
     try {
         // Check if language is already set
-        $exists = $wpdb->get_var("SELECT COUNT(*) FROM {$config['wp_prefix']}icl_translations 
-            WHERE element_id = $postId AND element_type = 'post_post'");
+        $exists = mysqli_num_rows($wpdb->query("SELECT COUNT(*) FROM {$config['wp_prefix']}icl_translations 
+            WHERE element_id = $postId AND element_type = 'post_post'"));
 
         if ($exists) {
             // Update existing language
