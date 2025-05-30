@@ -17,6 +17,11 @@
     }
   ],
   "minimum-stability": "stable",
+  "autoload": {
+    "psr-4": {
+      "MongoWPMigration\\": "src/"
+    }
+  },
   "scripts": {
     "test": "php test-migration.php",
     "migrate": "php mongodb-to-wp-migration.php"

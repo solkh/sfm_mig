@@ -132,7 +132,7 @@ function initializeConnections()
     try {
         // Connect to MongoDB
         logMessage("Connecting to MongoDB...");
-        $mongoClient = new MongoDB\Client($config['mongo_uri'], [
+        $mongoClient = new \MongoDB\Client($config['mongo_uri'], [
             'authSource' => $config['auth_source'],
             'username' => $config['mongo_user'] ?? null,
             'password' => $config['mongo_pass'] ?? null,
