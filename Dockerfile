@@ -1,4 +1,4 @@
-FROM php:8.4.6-cli
+FROM php:8.1-cli
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -8,14 +8,13 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     zip \
-    unzip
+    unzip \
+    libzip-dev
 
-# Install MongoDB extension
+# Install PHP extensions
+RUN docker-php-ext-install zip mysqli
 RUN pecl install mongodb && \
     docker-php-ext-enable mongodb
-
-# Install mysqli extension
-RUN docker-php-ext-install mysqli
 
 # Set working directory
 WORKDIR /app
