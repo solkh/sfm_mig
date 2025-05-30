@@ -110,10 +110,13 @@ function testDatabaseConnections()
         $adminDb = $mongoClient->admin;
         $result = $adminDb->command(['ping' => 1]);
 
-        if ($result['ok'] == 1) {
+        // Use a simpler ping approach
+        try {
+            // Just try to list databases to verify connection
+            $dbs = $mongoClient->listDatabases();
             echo "✓ MongoDB connection successful\n";
-        } else {
-            echo "✗ MongoDB connection failed\n";
+        } catch (Exception $e) {
+            echo "✗ MongoDB connection failed: " . $e->getMessage() . "\n";
             return false;
         }
 
