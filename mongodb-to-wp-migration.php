@@ -8,6 +8,13 @@ namespace MongoWPMigration;
  * This script migrates articles from a MongoDB database to a WordPress installation with WPML support.
  * It handles multilingual content, image downloads, and category mappings.
  * 
+ * Enhanced features:
+ * - Uses hardcoded mapping arrays for category assignment
+ * - Tags imported posts with custom meta field for easy identification
+ * - Filters imports by creation date
+ * - Properly handles MongoDB date conversion
+ * - Ensures posts are visible in WordPress admin dashboard
+ * - Includes all required WordPress fields
  */
 
 // Check if MongoDB extension is loaded
@@ -19,7 +26,7 @@ if (!extension_loaded('mongodb')) {
 require_once __DIR__ . '/vendor/autoload.php';
 
 // Verify MongoDB\Client class exists
-if (!class_exists('MongoDB\Client')) {
+if (!class_exists('\MongoDB\Client')) {
     die("MongoDB\Client class not found. Please run 'composer install' to install dependencies.");
 }
 
@@ -54,6 +61,8 @@ $config = [
     'old_image_domain' => 'storage.xposuredevlabs.com',
     'new_image_domain' => 'storage.sfuturem.org',
     'image_download_path' => '/tmp/wp-migration-images/',
+    'wp_uploads_dir' => '/var/www/html/wp-content/uploads/', // WordPress uploads directory (absolute path)
+    'wp_uploads_url' => 'https://sfuturem.org/wp-content/uploads/', // WordPress uploads URL base
 
     // Languages
     'languages' => ['en', 'ar'],
@@ -116,7 +125,7 @@ function main()
         generateReport();
 
         echo "Migration completed successfully. See {$config['report_file']} for details.\n";
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         logError("Fatal error: " . $e->getMessage());
         echo "Migration failed: " . $e->getMessage() . "\n";
     }
@@ -149,12 +158,12 @@ function initializeConnections()
         );
 
         if ($wpdb->connect_error) {
-            throw new Exception("WordPress database connection failed: " . $wpdb->connect_error);
+            throw new \Exception("WordPress database connection failed: " . $wpdb->connect_error);
         }
 
         logMessage("WordPress database connection established.");
-    } catch (Exception $e) {
-        throw new Exception("Connection initialization failed: " . $e->getMessage());
+    } catch (\Exception $e) {
+        throw new \Exception("Connection initialization failed: " . $e->getMessage());
     }
 }
 
@@ -166,11 +175,11 @@ function verifyMappingArrays()
     global $officeMapping, $departmentMapping;
 
     if (!isset($officeMapping) || !is_array($officeMapping) || count($officeMapping) === 0) {
-        throw new Exception("Office mapping array is not properly loaded. Check mapping_arrays.php file.");
+        throw new \Exception("Office mapping array is not properly loaded. Check mapping_arrays.php file.");
     }
 
     if (!isset($departmentMapping) || !is_array($departmentMapping) || count($departmentMapping) === 0) {
-        throw new Exception("Department mapping array is not properly loaded. Check mapping_arrays.php file.");
+        throw new \Exception("Department mapping array is not properly loaded. Check mapping_arrays.php file.");
     }
 
     logMessage("Mapping arrays loaded successfully: " . count($officeMapping) . " offices and " . count($departmentMapping) . " departments.");
@@ -233,7 +242,7 @@ function migrateArticles()
                 'title_en' => $article['title']['en'] ?? '',
                 'title_ar' => $article['title']['ar'] ?? '',
             ];
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $failed++;
             logError("Error processing article $articleId: " . $e->getMessage());
 
@@ -262,7 +271,7 @@ function migrateArticles()
  * Validate article has required fields
  * 
  * @param array $article MongoDB article document
- * @throws Exception If article is missing required fields
+ * @throws \Exception If article is missing required fields
  */
 function validateArticle($article)
 {
@@ -275,14 +284,14 @@ function validateArticle($article)
 
     foreach ($requiredFields as $field) {
         if (!isset($article[$field])) {
-            throw new Exception("Article is missing required field: $field");
+            throw new \Exception("Article is missing required field: $field");
         }
     }
 
     // Check language fields
     foreach (['title', 'slug', 'description'] as $field) {
         if (!isset($article[$field]['en']) || !isset($article[$field]['ar'])) {
-            throw new Exception("Article is missing language version for field: $field");
+            throw new \Exception("Article is missing language version for field: $field");
         }
     }
 }
@@ -333,12 +342,40 @@ function processArticle($article)
         }
 
         return $result;
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         return [
             'success' => false,
             'message' => $e->getMessage()
         ];
     }
+}
+
+/**
+ * Convert MongoDB date to MySQL datetime format
+ * 
+ * @param mixed $mongoDate MongoDB date object
+ * @return string MySQL datetime string
+ */
+function convertMongoDateToMysql($mongoDate)
+{
+    if (!isset($mongoDate['$date'])) {
+        throw new \Exception("Invalid MongoDB date format");
+    }
+
+    // Check if it's milliseconds timestamp (integer) or ISO string
+    if (is_int($mongoDate['$date'])) {
+        // It's a milliseconds timestamp
+        $timestamp = floor($mongoDate['$date'] / 1000); // Convert milliseconds to seconds
+    } else {
+        // It's an ISO date string
+        $timestamp = strtotime($mongoDate['$date']);
+    }
+
+    if (!$timestamp) {
+        throw new \Exception("Failed to parse MongoDB date: " . json_encode($mongoDate));
+    }
+
+    return date('Y-m-d H:i:s', $timestamp);
 }
 
 /**
@@ -356,17 +393,25 @@ function createWordPressPost($article, $language)
         // Begin transaction
         $wpdb->query('START TRANSACTION');
 
-        // Prepare post data
-        $postDate = date('Y-m-d H:i:s', strtotime($article['dateOfPublished']));
+        // Prepare post data with proper date conversion
+        try {
+            $postDate = convertMongoDateToMysql($article['dateOfPublished']);
+            $postModified = convertMongoDateToMysql($article['updatedAt']);
+        } catch (\Exception $e) {
+            logError("Date conversion error: " . $e->getMessage() . ". Using current date instead.");
+            $postDate = date('Y-m-d H:i:s');
+            $postModified = date('Y-m-d H:i:s');
+        }
 
         $postData = [
             'post_title' => $article['title'][$language],
             'post_content' => $article['description'][$language],
+            'post_excerpt' => '', // Add empty post_excerpt
             'post_name' => $article['slug'][$language],
             'post_date' => $postDate,
             'post_date_gmt' => $postDate,
-            'post_modified' => date('Y-m-d H:i:s', strtotime($article['updatedAt'])),
-            'post_modified_gmt' => date('Y-m-d H:i:s', strtotime($article['updatedAt'])),
+            'post_modified' => $postModified,
+            'post_modified_gmt' => $postModified,
             'post_status' => 'publish',
             'post_author' => $config['wp_author_id'],
             'post_type' => 'post',
@@ -400,10 +445,14 @@ function createWordPressPost($article, $language)
         $postId = $wpdb->insert_id;
 
         if (!$postId) {
-            throw new Exception("Failed to insert post: " . $wpdb->last_error);
+            throw new \Exception("Failed to insert post: " . $wpdb->last_error);
         }
 
-        //// Add custom meta field to tag imported posts
+        // Update GUID (WordPress uses this for permalinks)
+        $guid = "https://sfuturem.org/?p=$postId"; // Replace with actual site URL if available
+        $wpdb->query("UPDATE {$config['wp_prefix']}posts SET guid = '$guid' WHERE ID = $postId");
+
+        // Add custom meta field to tag imported posts
         $wpdb->query("INSERT INTO {$config['wp_prefix']}postmeta 
             (post_id, meta_key, meta_value) 
             VALUES 
@@ -422,7 +471,7 @@ function createWordPressPost($article, $language)
         // Process featured image
         if (isset($article['image'][$language])) {
             $imageUrl = $article['image'][$language];
-            $imageId = processAndAttachImage($imageUrl, $postId, $language, $postData['post_date']);
+            $imageId = processAndAttachImage($imageUrl, $postId, $language, $postDate);
 
             if ($imageId) {
                 // Set as featured image
@@ -490,7 +539,7 @@ function createWordPressPost($article, $language)
         $wpdb->query('COMMIT');
 
         return $postId;
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         // Rollback transaction on error
         $wpdb->query('ROLLBACK');
         throw $e;
@@ -549,7 +598,7 @@ function setPostLanguage($postId, $language)
         }
 
         return true;
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         logError("Failed to set post language: " . $e->getMessage());
         return false;
     }
@@ -589,7 +638,7 @@ function linkTranslations($postId1, $postId2, $lang1, $lang2)
             WHERE element_id = $postId2 AND element_type = 'post_post'");
 
         return true;
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         logError("Failed to link translations: " . $e->getMessage());
         return false;
     }
@@ -601,9 +650,10 @@ function linkTranslations($postId1, $postId2, $lang1, $lang2)
  * @param string $imageUrl Image URL
  * @param int $postId WordPress post ID
  * @param string $language Language code
+ * @param string $postDate Post date (used for uploads directory structure)
  * @return int|false WordPress attachment ID or false on failure
  */
-function processAndAttachImage($imageUrl, $postId, $language, $date)
+function processAndAttachImage($imageUrl, $postId, $language, $postDate)
 {
     global $wpdb, $config;
 
@@ -617,35 +667,75 @@ function processAndAttachImage($imageUrl, $postId, $language, $date)
 
         // Download image
         if (!downloadFile($imageUrl, $localPath)) {
-            throw new Exception("Failed to download image: $imageUrl");
+            throw new \Exception("Failed to download image: $imageUrl");
         }
+
+        // Create WordPress uploads directory structure based on post date
+        $dateObj = new \DateTime($postDate);
+        $yearMonth = $dateObj->format('Y/m');
+        $uploadsRelPath = $yearMonth;
+        $uploadsAbsPath = $config['wp_uploads_dir'] . $uploadsRelPath;
+
+        // Create directory if it doesn't exist
+        if (!file_exists($uploadsAbsPath)) {
+            if (!mkdir($uploadsAbsPath, 0755, true)) {
+                throw new \Exception("Failed to create uploads directory: $uploadsAbsPath");
+            }
+            logMessage("Created uploads directory: $uploadsAbsPath");
+        }
+
+        // Move file to WordPress uploads directory
+        $wpFilePath = $uploadsAbsPath . '/' . $filename;
+        if (!copy($localPath, $wpFilePath)) {
+            throw new \Exception("Failed to copy file to WordPress uploads directory: $wpFilePath");
+        }
+        logMessage("Copied image to WordPress uploads: $wpFilePath");
+
+        // Set the relative path for WordPress
+        $relativeFilePath = $uploadsRelPath . '/' . $filename;
 
         // Get file info
         $fileType = wp_check_filetype($filename);
         $attachment = [
             'post_mime_type' => $fileType['type'],
             'post_title' => sanitize_file_name($filename),
-            'post_content' => '',
-            'post_status' => 'inherit'
+            'guid' => $config['wp_uploads_url'] . $relativeFilePath
         ];
 
+        // Get image dimensions if possible
+        $imageDimensions = getImageDimensions($wpFilePath);
+        $width = $imageDimensions['width'] ?? 800;  // Default if can't determine
+        $height = $imageDimensions['height'] ?? 600; // Default if can't determine
+
         // Insert attachment
+        $wpdb->query("INSERT INTO {$config['wp_prefix']}posts 
+            (post_title, post_content, post_excerpt, post_mime_type, post_status, post_type, post_parent, guid) 
+            VALUES 
+            ('{$wpdb->escape_string($attachment['post_title'])}', 
+             '{$attachment['post_content']}', 
+             '{$attachment['post_excerpt']}', 
+             '{$attachment['post_mime_type']}', 
+             '{$attachment['post_status']}', 
+             'attachment', 
+             $postId, 
+             '{$attachment['guid']}')");
+
         $wpdb->query("INSERT INTO {$config['wp_prefix']}posts 
             (post_title, post_content, post_excerpt, to_ping, pinged, post_content_filtered, post_name, post_date, post_date_gmt, 
              post_modified, post_modified_gmt, post_status, post_author, 
              post_type, comment_status, ping_status, post_mime_type, post_parent, guid)
             VALUES 
             ('{$wpdb->escape_string($attachment['post_title'])}', 
-             '{$attachment['post_content']}', 
+             '', 
              '', /* post_excerpt */
              '', /* to_ping */
              '', /* pinged */
              '', /* post_content_filtered */
              '', /* post_name */
-             '{$date}', 
-             '{$date}', 
-             '{$date}', 
-             '{$date}', 
+             '{$postDate}', 
+             '{$postDate}', 
+             '{$postDate}', 
+             '{$postDate}', 
              'inherit', 
              {$config['wp_author_id']}, 
              'attachment', 
@@ -653,33 +743,35 @@ function processAndAttachImage($imageUrl, $postId, $language, $date)
              'closed',
              '{$attachment['post_mime_type']}', 
              $postId, 
-             '{$wpdb->escape_string($imageUrl)}')");
+             '{$attachment['guid']}')");
 
         $attachmentId = $wpdb->insert_id;
 
         if (!$attachmentId) {
-            throw new Exception("Failed to insert attachment: " . $wpdb->last_error);
+            throw new \Exception("Failed to insert attachment: " . $wpdb->last_error);
         }
 
-        // Add attachment metadata
+        // Add attachment metadata with proper WordPress format
         $attachMeta = [
-            '_wp_attached_file' => $filename,
+            '_wp_attached_file' => $relativeFilePath,
             '_wp_attachment_metadata' => serialize([
-                'width' => 800,  // Default values, would be better to get actual dimensions
-                'height' => 600,
-                'file' => $filename,
+                'width' => $width,
+                'height' => $height,
+                'file' => $relativeFilePath,
                 'sizes' => [
                     'thumbnail' => [
                         'file' => $filename,
-                        'width' => 150,
-                        'height' => 150,
+                        'width' => min(150, $width),
+                        'height' => min(150, $height),
+                        'mime-type' => $fileType['type'],
                     ],
                     'medium' => [
                         'file' => $filename,
-                        'width' => 300,
-                        'height' => 225,
+                        'width' => min(300, $width),
+                        'height' => min(300 * ($height / $width), $height),
+                        'mime-type' => $fileType['type'],
                     ],
-                ],
+                ]
             ])
         ];
 
@@ -700,10 +792,34 @@ function processAndAttachImage($imageUrl, $postId, $language, $date)
         setPostLanguage($attachmentId, $language);
 
         return $attachmentId;
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         logError("Failed to process image: " . $e->getMessage());
         return false;
     }
+}
+
+/**
+ * Get image dimensions
+ * 
+ * @param string $path Path to image file
+ * @return array Array with width and height
+ */
+function getImageDimensions($path)
+{
+    $dimensions = [
+        'width' => 800,  // Default
+        'height' => 600, // Default
+    ];
+
+    if (function_exists('getimagesize')) {
+        $imageInfo = @getimagesize($path);
+        if ($imageInfo && isset($imageInfo[0]) && isset($imageInfo[1])) {
+            $dimensions['width'] = $imageInfo[0];
+            $dimensions['height'] = $imageInfo[1];
+        }
+    }
+
+    return $dimensions;
 }
 
 /**
