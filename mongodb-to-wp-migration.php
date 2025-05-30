@@ -592,7 +592,7 @@ function setPostLanguage($postId, $language, $elementType = 'post_post')
         } else {
             // Insert new language entry
             // Find the next available trid
-            $nextTrid = $wpdb->get_var("SELECT MAX(trid) + 1 FROM {$config['wp_prefix']}icl_translations");
+            $nextTrid = mysqli_num_rows($wpdb->query("SELECT MAX(trid) + 1 FROM {$config['wp_prefix']}icl_translations"));
             if (!$nextTrid) {
                 $nextTrid = 1; // Start trid from 1 if table is empty
             }
