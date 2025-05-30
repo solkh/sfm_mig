@@ -1,4 +1,5 @@
 <?php
+
 /**
  * MongoDB to WordPress Migration Script
  * 
@@ -60,6 +61,14 @@ $config = [
     'report_file' => 'migration_report.csv',
     'log_file' => 'migration_log.txt',
     'verbose' => true,
+
+    // Import tagging
+    'import_tag_meta_key' => '_mongodb_sfm_imported',
+    'import_tag_meta_value' => 'imported_' . date('Y-m-d'),
+
+    // Date filtering
+    'import_date_filter' => '2025-03-11', // Only import posts created on or after this date (YYYY-MM-DD)
+    'use_date_filter' => true, // Set to false to import all posts regardless of date
 ];
 
 // Initialize global variables
@@ -81,7 +90,7 @@ function main()
     try {
         // Initialize connections
         initializeConnections();
-        
+
         // Verify mapping arrays are loaded
         verifyMappingArrays();
 
@@ -92,6 +101,9 @@ function main()
 
         // Start migration process
         logMessage("Starting migration process...");
+        if ($config['use_date_filter']) {
+            logMessage("Date filter enabled: Only importing posts created on or after {$config['import_date_filter']}");
+        }
         migrateArticles();
 
         // Generate final report
@@ -150,15 +162,15 @@ function initializeConnections()
 function verifyMappingArrays()
 {
     global $officeMapping, $departmentMapping;
-    
+
     if (!isset($officeMapping) || !is_array($officeMapping) || count($officeMapping) === 0) {
         throw new Exception("Office mapping array is not properly loaded. Check mapping_arrays.php file.");
     }
-    
+
     if (!isset($departmentMapping) || !is_array($departmentMapping) || count($departmentMapping) === 0) {
         throw new Exception("Department mapping array is not properly loaded. Check mapping_arrays.php file.");
     }
-    
+
     logMessage("Mapping arrays loaded successfully: " . count($officeMapping) . " offices and " . count($departmentMapping) . " departments.");
 }
 
@@ -170,9 +182,18 @@ function migrateArticles()
     global $config, $mongoClient, $report;
 
     $collection = $mongoClient->{$config['mongo_db']}->{$config['mongo_collection']};
-    $cursor = $collection->find(['state' => 'published']);
 
-    $totalArticles = $collection->countDocuments(['state' => 'published']);
+    // Build query with date filter if enabled
+    $query = ['state' => 'published'];
+    if ($config['use_date_filter'] && !empty($config['import_date_filter'])) {
+        $dateFilter = new MongoDB\BSON\UTCDateTime(strtotime($config['import_date_filter']) * 1000);
+        $query['dateOfPublished'] = ['$gte' => $dateFilter];
+        logMessage("Applied date filter: dateOfPublished >= {$config['import_date_filter']}");
+    }
+
+    $cursor = $collection->find($query);
+    $totalArticles = $collection->countDocuments($query);
+
     logMessage("Found $totalArticles articles to migrate.");
 
     $processed = 0;
@@ -375,6 +396,19 @@ function createWordPressPost($article, $language)
         if (!$postId) {
             throw new Exception("Failed to insert post: " . $wpdb->last_error);
         }
+
+        //// Add custom meta field to tag imported posts
+        $wpdb->query("INSERT INTO {$config['wp_prefix']}postmeta 
+            (post_id, meta_key, meta_value) 
+            VALUES 
+            ($postId, '{$config['import_tag_meta_key']}', '{$config['import_tag_meta_value']}')");
+        
+        // Add MongoDB ID as meta for reference
+        $mongoId = (string)$article['_id'];
+        $wpdb->query("INSERT INTO {$config['wp_prefix']}postmeta 
+            (post_id, meta_key, meta_value) 
+            VALUES 
+            ($postId, '_mongodb_id', '{$mongoId}')");
 
         // Set WPML language
         setPostLanguage($postId, $language);
@@ -636,6 +670,12 @@ function processAndAttachImage($imageUrl, $postId, $language)
                 ($attachmentId, '$key', '{$wpdb->escape($value)}')");
         }
 
+        // Tag attachment as imported
+        $wpdb->query("INSERT INTO {$config['wp_prefix']}postmeta 
+            (post_id, meta_key, meta_value) 
+            VALUES 
+            ($attachmentId, '{$config['import_tag_meta_key']}', '{$config['import_tag_meta_value']}')");
+
         // Set WPML language for attachment
         setPostLanguage($attachmentId, $language);
 
@@ -736,7 +776,7 @@ function logMessage($message)
     if ($config['verbose']) {
         echo $logEntry . "\n";
     }
-    
+
     // Write log file
     file_put_contents($config['log_file'], implode("\n", $log));
 }
@@ -757,7 +797,7 @@ function logError($message)
 
     // Always output errors
     echo $logEntry . "\n";
-    
+
     // Write log file
     file_put_contents($config['log_file'], implode("\n", $log));
 }
@@ -803,6 +843,72 @@ function wp_check_filetype($filename)
     }
 
     return ['ext' => $ext, 'type' => $type];
+}
+
+/**
+ * Helper function to find imported posts in WordPress
+ * 
+ * This function can be used to find all posts imported by this script
+ * 
+ * @param string $importTag Import tag value (defaults to current import tag)
+ * @return array Array of post IDs
+ */
+function findImportedPosts($importTag = null)
+{
+    global $wpdb, $config;
+
+    if ($importTag === null) {
+        $importTag = $config['import_tag_meta_value'];
+    }
+
+    $query = "SELECT post_id FROM {$config['wp_prefix']}postmeta 
+        WHERE meta_key = '{$config['import_tag_meta_key']}' 
+        AND meta_value = '$importTag'";
+
+    $results = $wpdb->get_results($query);
+
+    $postIds = [];
+    foreach ($results as $row) {
+        $postIds[] = $row->post_id;
+    }
+
+    return $postIds;
+}
+
+/**
+ * Helper function to delete all imported posts
+ * 
+ * This function can be used to delete all posts imported by this script
+ * 
+ * @param string $importTag Import tag value (defaults to current import tag)
+ * @return int Number of posts deleted
+ */
+function deleteImportedPosts($importTag = null)
+{
+    global $wpdb, $config;
+
+    if ($importTag === null) {
+        $importTag = $config['import_tag_meta_value'];
+    }
+
+    $postIds = findImportedPosts($importTag);
+    $count = 0;
+
+    foreach ($postIds as $postId) {
+        // Delete post and all its meta
+        $wpdb->query("DELETE FROM {$config['wp_prefix']}posts WHERE ID = $postId");
+        $wpdb->query("DELETE FROM {$config['wp_prefix']}postmeta WHERE post_id = $postId");
+
+        // Delete from WPML tables
+        $wpdb->query("DELETE FROM {$config['wp_prefix']}icl_translations WHERE element_id = $postId AND element_type = 'post_post'");
+
+        // Delete term relationships
+        $wpdb->query("DELETE FROM {$config['wp_prefix']}term_relationships WHERE object_id = $postId");
+
+        $count++;
+    }
+
+    return $count;
 }
 
 // Run the script
