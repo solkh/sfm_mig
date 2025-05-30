@@ -3,9 +3,10 @@
   "description": "A script to migrate articles from MongoDB to WordPress with WPML support",
   "type": "project",
   "require": {
-    "php": ">=7.4",
-    "mongodb/mongodb": "^1.12",
+    "php": ">=8.1",
+    "mongodb/mongodb": "^2.1",
     "ext-mysqli": "*",
+    "ext-zip": "*",
     "ext-curl": "*",
     "ext-json": "*"
   },

@@ -1,16 +1,39 @@
-FROM php:8.1-cli
+FROM php:8.4.6-cli
 
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
+    git \
+    curl \
     libcurl4-openssl-dev \
     pkg-config \
     libssl-dev \
-    && pecl install mongodb \
-    && docker-php-ext-enable mongodb \
-    && docker-php-ext-install mysqli
+    zip \
+    unzip
 
+# Install MongoDB extension
+RUN pecl install mongodb && \
+    docker-php-ext-enable mongodb
+
+# Install mysqli extension
+RUN docker-php-ext-install mysqli
+
+# Set working directory
 WORKDIR /app
-COPY . /app/
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-RUN composer install
 
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Copy only composer files first for better layer caching
+COPY composer.json composer.lock* /app/
+
+# Install dependencies
+RUN composer install --no-scripts --no-autoloader
+
+# Copy the rest of the application
+COPY . /app/
+
+# Generate optimized autoloader
+RUN composer dump-autoload --optimize
+
+# Command to run when container starts
 CMD ["php", "-a"]
