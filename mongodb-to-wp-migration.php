@@ -576,8 +576,8 @@ function setPostLanguage($postId, $language, $elementType = 'post_post')
 
     try {
         // Check if language is already set
-        $existingTranslation = mysqli_num_rows($wpdb->query("SELECT translation_id, language_code FROM {$config['wp_prefix']}icl_translations 
-            WHERE element_id = $postId AND element_type = '$elementType'"));
+        $existingTranslation = $wpdb->query("SELECT translation_id, language_code FROM {$config['wp_prefix']}icl_translations 
+            WHERE element_id = $postId AND element_type = '$elementType'")->fetch_object();
 
         logMessage("Found $existingTranslation existing translation for post ID $postId and element type $elementType");
 
@@ -592,7 +592,7 @@ function setPostLanguage($postId, $language, $elementType = 'post_post')
         } else {
             // Insert new language entry
             // Find the next available translation_id
-            $nexttranslation_id = mysqli_num_rows($wpdb->query("SELECT MAX(translation_id) + 1 FROM {$config['wp_prefix']}icl_translations"));
+            $nexttranslation_id = $wpdb->query("SELECT MAX(translation_id) + 1 FROM {$config['wp_prefix']}icl_translations")->fetch_row()[0];
             if (!$nexttranslation_id) {
                 $nexttranslation_id = 1; // Start translation_id from 1 if table is empty
             }
@@ -625,8 +625,8 @@ function linkTranslations($postId1, $postId2, $lang1, $lang2)
 
     try {
         // Get translation row ID (translation_id) for the original post
-        $translation_id = mysqli_num_rows($wpdb->query("SELECT translation_id FROM {$config['wp_prefix']}icl_translations 
-            WHERE element_id = $postId1 AND element_type = 'post_post'"));
+        $translation_id = $wpdb->query("SELECT translation_id FROM {$config['wp_prefix']}icl_translations 
+            WHERE element_id = $postId1 AND element_type = 'post_post'")->fetch_row()[0];
 
         if (!$translation_id) {
             logError("Could not find translation_id for original post ID: $postId1");
