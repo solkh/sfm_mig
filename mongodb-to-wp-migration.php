@@ -368,7 +368,7 @@ function convertMongoDateToMysql($mongoDate)
         $timestamp = floor($mongoDate / 1000); // Convert milliseconds to seconds
     } else {
         // It's an ISO date string
-        $timestamp = strtotime($mongoDate);
+        $timestamp = strtotime($mongoDate->toDateTime());
     }
 
     if (!$timestamp) {
