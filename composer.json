@@ -17,6 +17,11 @@
     }
   ],
   "minimum-stability": "stable",
+  "autoload": {
+    "files": [
+      "mongodb-to-wp-migration.php"
+    ]
+  },
   "scripts": {
     "test": "php test-migration.php",
     "migrate": "php mongodb-to-wp-migration.php"
