@@ -729,10 +729,10 @@ function addThemeBuilderCompatibility($postId)
 
         foreach ($documentSettings as $key => $value) {
             // Check if the meta already exists
-            $existingMeta = $wpdb->get_var("SELECT meta_id FROM {$config['wp_prefix']}postmeta 
+            $existingMeta = $wpdb->query("SELECT meta_id FROM {$config['wp_prefix']}postmeta 
                 WHERE post_id = $postId AND meta_key = '$key'");
 
-            if ($existingMeta) {
+            if ($existingMeta->num_rows > 0) {
                 // Update existing meta
                 $wpdb->query("UPDATE {$config['wp_prefix']}postmeta 
                     SET meta_value = '{$wpdb->escape_string($value)}' 
