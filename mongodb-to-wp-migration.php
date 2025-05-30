@@ -16,6 +16,7 @@ namespace MongoWPMigration;
  * - Ensures posts are visible in WordPress admin dashboard
  * - Includes all required WordPress fields
  * - Enhanced WPML translation linking with Elementor support
+ * - Elementor Theme Builder compatibility for single post templates
  */
 
 // Check if MongoDB extension is loaded
@@ -84,6 +85,10 @@ $config = [
 
     // Elementor support
     'enable_elementor_support' => true, // Set to true to add Elementor meta fields
+
+    // Elementor Theme Builder support
+    'enable_theme_builder_support' => true, // Set to true to ensure compatibility with Elementor Theme Builder
+    'theme_builder_template_id' => '', // Optional: Specific template ID to use (leave empty to use default)
 ];
 
 // Initialize global variables
@@ -460,6 +465,11 @@ function createWordPressPost($article, $language)
             addElementorMeta($postId);
         }
 
+        // Add Elementor Theme Builder compatibility if enabled
+        if ($config['enable_theme_builder_support']) {
+            addThemeBuilderCompatibility($postId);
+        }
+
         // Process featured image
         if (isset($article['image'][$language])) {
             $imageUrl = $article['image'][$language];
@@ -592,17 +602,17 @@ function setPostLanguage($postId, $language, $elementType = 'post_post')
         } else {
             // Insert new language entry
             // Find the next available trid
-            $nexttrid = $wpdb->query("SELECT MAX(trid) + 1 FROM {$config['wp_prefix']}icl_translations")->fetch_row()[0];
-            if (!$nexttrid) {
-                $nexttrid = 1; // Start trid from 1 if table is empty
+            $nextTrid = $wpdb->query("SELECT MAX(trid) + 1 FROM {$config['wp_prefix']}icl_translations")->fetch_row()[0];
+            if (!$nextTrid) {
+                $nextTrid = 1; // Start trid from 1 if table is empty
             }
 
             $wpdb->query("INSERT INTO {$config['wp_prefix']}icl_translations 
                 (element_type, element_id, trid, language_code, source_language_code) 
                 VALUES 
-                ('$elementType', $postId, $nexttrid, '$language', NULL)");
+                ('$elementType', $postId, $nextTrid, '$language', NULL)");
 
-            return $nexttrid;
+            return $nextTrid;
         }
     } catch (\Exception $e) {
         logError("Failed to set post language: " . $e->getMessage());
@@ -677,6 +687,81 @@ function addElementorMeta($postId)
         logMessage("Added Elementor meta fields for post ID: $postId");
     } catch (\Exception $e) {
         logError("Failed to add Elementor meta fields: " . $e->getMessage());
+    }
+}
+
+/**
+ * Add Elementor Theme Builder compatibility to a post
+ * 
+ * @param int $postId WordPress post ID
+ */
+function addThemeBuilderCompatibility($postId)
+{
+    global $wpdb, $config;
+
+    try {
+        // First, check if there are any Elementor Theme Builder templates for single posts
+        $templateQuery = "SELECT post_id FROM {$config['wp_prefix']}postmeta 
+            WHERE meta_key = '_elementor_template_type' 
+            AND meta_value = 'single'";
+
+        $templates = $wpdb->get_results($templateQuery);
+
+        if (empty($templates)) {
+            logMessage("No Elementor Theme Builder templates found for single posts");
+            return;
+        }
+
+        // Get the specific template ID if provided, otherwise use the first available template
+        $templateId = !empty($config['theme_builder_template_id'])
+            ? $config['theme_builder_template_id']
+            : $templates[0]->post_id;
+
+        logMessage("Using Elementor Theme Builder template ID: $templateId for post ID: $postId");
+
+        // Add document settings meta that Elementor Theme Builder uses to identify which template to apply
+        $documentSettings = [
+            '_elementor_page_settings' => serialize([
+                'template' => 'elementor_header_footer', // This tells Elementor to use a template
+                'elementor_library_type' => 'page', // This is needed for proper template application
+                '_wp_page_template' => 'elementor_header_footer' // This is the template that Elementor uses
+            ])
+        ];
+
+        foreach ($documentSettings as $key => $value) {
+            // Check if the meta already exists
+            $existingMeta = $wpdb->get_var("SELECT meta_id FROM {$config['wp_prefix']}postmeta 
+                WHERE post_id = $postId AND meta_key = '$key'");
+
+            if ($existingMeta) {
+                // Update existing meta
+                $wpdb->query("UPDATE {$config['wp_prefix']}postmeta 
+                    SET meta_value = '{$wpdb->escape_string($value)}' 
+                    WHERE post_id = $postId AND meta_key = '$key'");
+            } else {
+                // Insert new meta
+                $wpdb->query("INSERT INTO {$config['wp_prefix']}postmeta 
+                    (post_id, meta_key, meta_value) 
+                    VALUES 
+                    ($postId, '$key', '{$wpdb->escape_string($value)}')");
+            }
+        }
+
+        // Add the page template setting that WordPress uses
+        $wpdb->query("INSERT INTO {$config['wp_prefix']}postmeta 
+            (post_id, meta_key, meta_value) 
+            VALUES 
+            ($postId, '_wp_page_template', 'elementor_header_footer')");
+
+        // Add a direct reference to the template (this helps in some Elementor setups)
+        $wpdb->query("INSERT INTO {$config['wp_prefix']}postmeta 
+            (post_id, meta_key, meta_value) 
+            VALUES 
+            ($postId, '_elementor_template_id', '$templateId')");
+
+        logMessage("Added Elementor Theme Builder compatibility for post ID: $postId");
+    } catch (\Exception $e) {
+        logError("Failed to add Elementor Theme Builder compatibility: " . $e->getMessage());
     }
 }
 
