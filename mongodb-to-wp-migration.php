@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * MongoDB to WordPress Migration Script
+ * 
+ * This script migrates articles from a MongoDB database to a WordPress installation with WPML support.
+ * It handles multilingual content, image downloads, and category mappings.
+ * 
+ */
 
 // Check if MongoDB extension is loaded
 if (!extension_loaded('mongodb')) {
@@ -14,14 +20,8 @@ if (!class_exists('MongoDB\Client')) {
     die("MongoDB\Client class not found. Please run 'composer install' to install dependencies.");
 }
 
-
-/**
- * MongoDB to WordPress Migration Script
- * 
- * This script migrates articles from a MongoDB database to a WordPress installation with WPML support.
- * It handles multilingual content, image downloads, and category mappings.
- * 
- */
+// Load the mapping arrays
+require_once __DIR__ . '/mapping_arrays.php';
 
 // Ensure script execution time is sufficient for migration
 ini_set('max_execution_time', 3600); // 1 hour
@@ -30,7 +30,6 @@ ini_set('memory_limit', '512M');     // 512MB memory limit
 // Configuration - Edit these values
 $config = [
     // MongoDB connection
-    //'mongo_uri' => 'mongodb://root:b84m9FjK1n3phU9HdsoJA86QrLXqwePJOqH1YHAiJU5Ee5EgnFjTts6faXUrrBIl@MongoDb:27017',    
     'mongo_uri' => 'mongodb://193.203.191.187:27017',
     'auth_source' => 'future-project',
     'mongo_db' => 'future-project',
@@ -66,8 +65,6 @@ $config = [
 // Initialize global variables
 $report = [];
 $log = [];
-$officeMapping = [];
-$departmentMapping = [];
 $wpdb = null;
 $mongoClient = null;
 
@@ -82,9 +79,11 @@ function main()
     $startTime = microtime(true);
 
     try {
-        // Initialize connections and mappings
+        // Initialize connections
         initializeConnections();
-        loadCategoryMappings();
+        
+        // Verify mapping arrays are loaded
+        verifyMappingArrays();
 
         // Create image download directory if it doesn't exist
         if (!file_exists($config['image_download_path'])) {
@@ -146,84 +145,21 @@ function initializeConnections()
 }
 
 /**
- * Load category mappings from CSV files
+ * Verify that mapping arrays are loaded
  */
-function loadCategoryMappings()
+function verifyMappingArrays()
 {
     global $officeMapping, $departmentMapping;
-
-    logMessage("Loading category mappings...");
-
-    // Load office mappings
-    $officeMapping = loadMappingFromCSV('future-project.offices.csv', 'wp_terms.csv');
-    logMessage("Loaded " . count($officeMapping) . " office mappings.");
-
-    // Load department mappings
-    $departmentMapping = loadMappingFromCSV('future-project.departments.csv', 'wp_terms.csv');
-    logMessage("Loaded " . count($departmentMapping) . " department mappings.");
-}
-
-/**
- * Load mapping from CSV files
- * 
- * 
- * @param string $sourceFile MongoDB source CSV file
- * @param string $wpTermsFile WordPress terms CSV file
- * @return array Mapping between MongoDB IDs and WordPress term IDs
- */
-function loadMappingFromCSV($sourceFile, $wpTermsFile)
-{
-    $mapping = [];
-    $wpTerms = [];
-
-    // Load WordPress terms
-    if (($handle = fopen($wpTermsFile, "r")) !== false) {
-        // Skip header row
-        fgetcsv($handle);
-
-        while (($data = fgetcsv($handle)) !== false) {
-            if (count($data) >= 2) {
-                $termId = $data[0];
-                $termName = $data[1];
-                $wpTerms[strtolower($termName)] = $termId;
-            }
-        }
-        fclose($handle);
-    } else {
-        throw new Exception("Could not open WordPress terms file: $wpTermsFile");
+    
+    if (!isset($officeMapping) || !is_array($officeMapping) || count($officeMapping) === 0) {
+        throw new Exception("Office mapping array is not properly loaded. Check mapping_arrays.php file.");
     }
-
-    // Load source mappings
-    if (($handle = fopen($sourceFile, "r")) !== false) {
-        // Skip header row
-        fgetcsv($handle);
-
-        while (($data = fgetcsv($handle)) !== false) {
-            if (count($data) >= 3) {
-                $mongoId = $data[0];
-                $titleAr = $data[1];
-                $titleEn = $data[2];
-
-                // Find matching WordPress term IDs
-                $termIdAr = $wpTerms[strtolower($titleAr)] ?? null;
-                $termIdEn = $wpTerms[strtolower($titleEn)] ?? null;
-
-                if ($termIdAr || $termIdEn) {
-                    $mapping[$mongoId] = [
-                        'ar' => $termIdAr,
-                        'en' => $termIdEn,
-                        'title_ar' => $titleAr,
-                        'title_en' => $titleEn
-                    ];
-                }
-            }
-        }
-        fclose($handle);
-    } else {
-        throw new Exception("Could not open source mapping file: $sourceFile");
+    
+    if (!isset($departmentMapping) || !is_array($departmentMapping) || count($departmentMapping) === 0) {
+        throw new Exception("Department mapping array is not properly loaded. Check mapping_arrays.php file.");
     }
-
-    return $mapping;
+    
+    logMessage("Mapping arrays loaded successfully: " . count($officeMapping) . " offices and " . count($departmentMapping) . " departments.");
 }
 
 /**
@@ -460,22 +396,28 @@ function createWordPressPost($article, $language)
         // Process categories (offices and departments)
         $termIds = [];
 
-        // Add offices
+        // Add offices using the hardcoded mapping array
         if (isset($article['offices']) && is_array($article['offices'])) {
             foreach ($article['offices'] as $office) {
                 $officeId = (string)$office['$oid'];
-                if (isset($officeMapping[$officeId][$language])) {
+                if (isset($officeMapping[$officeId][$language]) && $officeMapping[$officeId][$language]) {
                     $termIds[] = $officeMapping[$officeId][$language];
+                    logMessage("Added office term ID {$officeMapping[$officeId][$language]} for office $officeId in $language");
+                } else {
+                    logMessage("No mapping found for office $officeId in $language");
                 }
             }
         }
 
-        // Add departments
+        // Add departments using the hardcoded mapping array
         if (isset($article['departments']) && is_array($article['departments'])) {
             foreach ($article['departments'] as $department) {
                 $departmentId = (string)$department['$oid'];
-                if (isset($departmentMapping[$departmentId][$language])) {
+                if (isset($departmentMapping[$departmentId][$language]) && $departmentMapping[$departmentId][$language]) {
                     $termIds[] = $departmentMapping[$departmentId][$language];
+                    logMessage("Added department term ID {$departmentMapping[$departmentId][$language]} for department $departmentId in $language");
+                } else {
+                    logMessage("No mapping found for department $departmentId in $language");
                 }
             }
         }
@@ -496,7 +438,7 @@ function createWordPressPost($article, $language)
                         VALUES 
                         ($postId, $termTaxonomyId, 0)");
 
-                    // Update count
+                    // Update term count
                     $wpdb->query("UPDATE {$config['wp_prefix']}term_taxonomy 
                         SET count = count + 1 
                         WHERE term_taxonomy_id = $termTaxonomyId");
@@ -509,33 +451,30 @@ function createWordPressPost($article, $language)
 
         return $postId;
     } catch (Exception $e) {
-        // Rollback on error
+        // Rollback transaction on error
         $wpdb->query('ROLLBACK');
-        logError("Error creating WordPress post: " . $e->getMessage());
-        return false;
+        throw $e;
     }
 }
 
 /**
- * Create WordPress translation for a post
+ * Create WordPress translation post
  * 
  * @param array $article MongoDB article document
- * @param string $language Language code to create
+ * @param string $language Language code for translation
  * @param int $originalPostId Original post ID
  * @param string $originalLang Original language code
- * @return int|false WordPress post ID of translation or false on failure
+ * @return int|false WordPress post ID or false on failure
  */
 function createWordPressTranslation($article, $language, $originalPostId, $originalLang)
 {
-    // Create the post in the target language
+    // Create post in translation language
     $translationId = createWordPressPost($article, $language);
 
-    if (!$translationId) {
-        return false;
+    if ($translationId) {
+        // Link translations
+        linkTranslations($originalPostId, $translationId, $originalLang, $language);
     }
-
-    // Link the posts as translations in WPML
-    linkWpmlTranslations($originalPostId, $translationId, $originalLang, $language);
 
     return $translationId;
 }
@@ -545,63 +484,81 @@ function createWordPressTranslation($article, $language, $originalPostId, $origi
  * 
  * @param int $postId WordPress post ID
  * @param string $language Language code
+ * @return bool Success status
  */
 function setPostLanguage($postId, $language)
 {
     global $wpdb, $config;
 
-    // Check if language entry exists
-    $exists = $wpdb->get_var("SELECT translation_id FROM {$config['wp_prefix']}icl_translations 
-        WHERE element_id = $postId AND element_type = 'post_post'");
-
-    if ($exists) {
-        // Update existing entry
-        $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
-            SET language_code = '$language' 
+    try {
+        // Check if language is already set
+        $exists = $wpdb->get_var("SELECT COUNT(*) FROM {$config['wp_prefix']}icl_translations 
             WHERE element_id = $postId AND element_type = 'post_post'");
-    } else {
-        // Create new entry
-        $wpdb->query("INSERT INTO {$config['wp_prefix']}icl_translations 
-            (element_type, element_id, trid, language_code, source_language_code) 
-            VALUES 
-            ('post_post', $postId, $postId, '$language', NULL)");
+
+        if ($exists) {
+            // Update existing language
+            $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
+                SET language_code = '$language' 
+                WHERE element_id = $postId AND element_type = 'post_post'");
+        } else {
+            // Insert new language entry
+            $wpdb->query("INSERT INTO {$config['wp_prefix']}icl_translations 
+                (element_type, element_id, trid, language_code, source_language_code) 
+                VALUES 
+                ('post_post', $postId, NULL, '$language', NULL)");
+        }
+
+        return true;
+    } catch (Exception $e) {
+        logError("Failed to set post language: " . $e->getMessage());
+        return false;
     }
 }
 
 /**
- * Link posts as translations in WPML
+ * Link translations in WPML
  * 
  * @param int $postId1 First post ID
  * @param int $postId2 Second post ID
- * @param string $lang1 First post language
- * @param string $lang2 Second post language
+ * @param string $lang1 First language code
+ * @param string $lang2 Second language code
+ * @return bool Success status
  */
-function linkWpmlTranslations($postId1, $postId2, $lang1, $lang2)
+function linkTranslations($postId1, $postId2, $lang1, $lang2)
 {
     global $wpdb, $config;
 
-    // Generate a translation relationship ID
-    $trid = $wpdb->get_var("SELECT MAX(trid) + 1 FROM {$config['wp_prefix']}icl_translations");
+    try {
+        // Get translation row ID (trid) for first post
+        $trid = $wpdb->get_var("SELECT trid FROM {$config['wp_prefix']}icl_translations 
+            WHERE element_id = $postId1 AND element_type = 'post_post'");
 
-    if (!$trid) {
-        $trid = 1;
+        if (!$trid) {
+            // Create new trid
+            $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
+                SET trid = (SELECT MAX(trid) + 1 FROM {$config['wp_prefix']}icl_translations) 
+                WHERE element_id = $postId1 AND element_type = 'post_post'");
+
+            $trid = $wpdb->get_var("SELECT trid FROM {$config['wp_prefix']}icl_translations 
+                WHERE element_id = $postId1 AND element_type = 'post_post'");
+        }
+
+        // Update second post with same trid and source language
+        $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
+            SET trid = $trid, source_language_code = '$lang1' 
+            WHERE element_id = $postId2 AND element_type = 'post_post'");
+
+        return true;
+    } catch (Exception $e) {
+        logError("Failed to link translations: " . $e->getMessage());
+        return false;
     }
-
-    // Update first post
-    $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
-        SET trid = $trid 
-        WHERE element_id = $postId1 AND element_type = 'post_post'");
-
-    // Update second post
-    $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
-        SET trid = $trid, source_language_code = '$lang1' 
-        WHERE element_id = $postId2 AND element_type = 'post_post'");
 }
 
 /**
  * Process and attach image to post
  * 
- * @param string $imageUrl Original image URL
+ * @param string $imageUrl Image URL
  * @param int $postId WordPress post ID
  * @param string $language Language code
  * @return int|false WordPress attachment ID or false on failure
@@ -611,15 +568,11 @@ function processAndAttachImage($imageUrl, $postId, $language)
     global $wpdb, $config;
 
     try {
-        // Transform URL
-        $imageUrl = str_replace(
-            $config['old_image_domain'],
-            $config['new_image_domain'],
-            $imageUrl
-        );
+        // Transform image URL
+        $imageUrl = str_replace($config['old_image_domain'], $config['new_image_domain'], $imageUrl);
 
         // Extract filename from URL
-        $filename = basename(parse_url($imageUrl, PHP_URL_PATH));
+        $filename = basename($imageUrl);
         $localPath = $config['image_download_path'] . $filename;
 
         // Download image
@@ -629,29 +582,24 @@ function processAndAttachImage($imageUrl, $postId, $language)
 
         // Get file info
         $fileType = wp_check_filetype($filename);
-        if (!$fileType['type']) {
-            throw new Exception("Unknown file type for image: $filename");
-        }
-
-        // Prepare attachment data
         $attachment = [
             'post_mime_type' => $fileType['type'],
-            'post_title' => preg_replace('/\.[^.]+$/', '', $filename),
+            'post_title' => sanitize_file_name($filename),
             'post_content' => '',
-            'post_status' => 'inherit',
-            'guid' => $imageUrl
+            'post_status' => 'inherit'
         ];
 
         // Insert attachment
         $wpdb->query("INSERT INTO {$config['wp_prefix']}posts 
-            (post_mime_type, post_title, post_content, post_status, guid, post_parent) 
+            (post_title, post_content, post_mime_type, post_status, post_type, post_parent, guid) 
             VALUES 
-            ('{$attachment['post_mime_type']}', 
-             '{$wpdb->escape($attachment['post_title'])}', 
+            ('{$wpdb->escape($attachment['post_title'])}', 
              '{$attachment['post_content']}', 
+             '{$attachment['post_mime_type']}', 
              '{$attachment['post_status']}', 
-             '{$wpdb->escape($attachment['guid'])}', 
-             $postId)");
+             'attachment', 
+             $postId, 
+             '{$wpdb->escape($imageUrl)}')");
 
         $attachmentId = $wpdb->insert_id;
 
@@ -659,7 +607,7 @@ function processAndAttachImage($imageUrl, $postId, $language)
             throw new Exception("Failed to insert attachment: " . $wpdb->last_error);
         }
 
-        // Set attachment metadata
+        // Add attachment metadata
         $attachMeta = [
             '_wp_attached_file' => $filename,
             '_wp_attachment_metadata' => serialize([
@@ -693,7 +641,7 @@ function processAndAttachImage($imageUrl, $postId, $language)
 
         return $attachmentId;
     } catch (Exception $e) {
-        logError("Error processing image: " . $e->getMessage());
+        logError("Failed to process image: " . $e->getMessage());
         return false;
     }
 }
@@ -733,7 +681,7 @@ function downloadFile($url, $path)
  */
 function generateReport()
 {
-    global $config, $report;
+    global $config, $report, $log;
 
     // Write CSV report
     $fp = fopen($config['report_file'], 'w');
@@ -788,6 +736,7 @@ function logMessage($message)
     if ($config['verbose']) {
         echo $logEntry . "\n";
     }
+    
     // Write log file
     file_put_contents($config['log_file'], implode("\n", $log));
 }
@@ -799,7 +748,7 @@ function logMessage($message)
  */
 function logError($message)
 {
-    global $log;
+    global $config, $log;
 
     $timestamp = date('Y-m-d H:i:s');
     $logEntry = "[$timestamp] ERROR: $message";
@@ -808,6 +757,52 @@ function logError($message)
 
     // Always output errors
     echo $logEntry . "\n";
+    
+    // Write log file
+    file_put_contents($config['log_file'], implode("\n", $log));
+}
+
+/**
+ * Helper function to sanitize file name
+ * 
+ * @param string $filename File name to sanitize
+ * @return string Sanitized file name
+ */
+function sanitize_file_name($filename)
+{
+    $filename = preg_replace('/[^a-zA-Z0-9._-]/', '', $filename);
+    return $filename;
+}
+
+/**
+ * Helper function to check file type
+ * 
+ * @param string $filename File name
+ * @return array File type info
+ */
+function wp_check_filetype($filename)
+{
+    $mimes = [
+        'jpg|jpeg|jpe' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'png' => 'image/png',
+        'bmp' => 'image/bmp',
+        'tif|tiff' => 'image/tiff',
+        'ico' => 'image/x-icon',
+        'pdf' => 'application/pdf',
+    ];
+
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    $type = '';
+
+    foreach ($mimes as $exts => $mime) {
+        if (preg_match('!^(' . $exts . ')$!i', $ext)) {
+            $type = $mime;
+            break;
+        }
+    }
+
+    return ['ext' => $ext, 'type' => $type];
 }
 
 // Run the script
