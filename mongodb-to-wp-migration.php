@@ -471,7 +471,8 @@ function createWordPressPost($article, $language)
         // Add offices using the hardcoded mapping array
         if (isset($article['offices']) && is_array($article['offices'])) {
             foreach ($article['offices'] as $office) {
-                $officeId = (string)$office['$oid'];
+                logMessage("Processing office: " . json_encode($office) . " for postId $postId");
+                $officeId = (string)$office;
                 if (isset($officeMapping[$officeId][$language]) && $officeMapping[$officeId][$language]) {
                     $termIds[] = $officeMapping[$officeId][$language];
                     logMessage("Added office term ID {$officeMapping[$officeId][$language]} for office $officeId in $language");
@@ -483,8 +484,9 @@ function createWordPressPost($article, $language)
 
         // Add departments using the hardcoded mapping array
         if (isset($article['departments']) && is_array($article['departments'])) {
+            logMessage("Processing department: " . json_encode($office) . " for postId $postId");
             foreach ($article['departments'] as $department) {
-                $departmentId = (string)$department['$oid'];
+                $departmentId = (string)$department;
                 if (isset($departmentMapping[$departmentId][$language]) && $departmentMapping[$departmentId][$language]) {
                     $termIds[] = $departmentMapping[$departmentId][$language];
                     logMessage("Added department term ID {$departmentMapping[$departmentId][$language]} for department $departmentId in $language");
