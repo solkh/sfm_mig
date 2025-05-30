@@ -31,8 +31,11 @@ ini_set('memory_limit', '512M');     // 512MB memory limit
 $config = [
     // MongoDB connection
     //'mongo_uri' => 'mongodb://root:b84m9FjK1n3phU9HdsoJA86QrLXqwePJOqH1YHAiJU5Ee5EgnFjTts6faXUrrBIl@MongoDb:27017',    
-    'mongo_uri' => 'mongodb://ed_sfm:b84m9FjK1n3phU9HdsoJA86QrLXqwePJOqH1YHAiJU5Ee5EgnFjTts6faXUrrBIl@193.203.191.187:27017/?authSource=future-project',
+    'mongo_uri' => 'mongodb://193.203.191.187:27017',
+    'auth_source' => 'future-project',
     'mongo_db' => 'future-project',
+    'mongo_user' => 'ed_sfm',
+    'mongo_pass' => 'b84m9FjK1n3phU9HdsoJA86QrLXqwePJOqH1YHAiJU5Ee5EgnFjTts6faXUrrBIl',
     'mongo_collection' => 'articles',
 
     // WordPress database connection
@@ -116,7 +119,11 @@ function initializeConnections()
     try {
         // Connect to MongoDB
         logMessage("Connecting to MongoDB...");
-        $mongoClient = new MongoDB\Client($config['mongo_uri']);
+        $mongoClient = new MongoDB\Client($config['mongo_uri'], [
+            'authSource' => $config['auth_source'],
+            'username' => $config['mongo_user'] ?? null,
+            'password' => $config['mongo_pass'] ?? null,
+        ]);
         logMessage("MongoDB connection established.");
 
         // Connect to WordPress database
