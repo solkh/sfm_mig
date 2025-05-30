@@ -21,6 +21,38 @@ if (!class_exists('MongoDB\Client')) {
  * without actually performing the full migration.
  */
 
+// Override configuration for testing
+$config = [
+    // MongoDB connection
+    'mongo_uri' => 'mongodb://ed_sfm:b84m9FjK1n3phU9HdsoJA86QrLXqwePJOqH1YHAiJU5Ee5EgnFjTts6faXUrrBIl@193.203.191.187:27017',
+    'mongo_db' => 'future-project',
+    'mongo_collection' => 'articles',
+
+    // WordPress database connection
+    'wp_host' => '193.203.191.187:3000',
+    'wp_db' => 'default',
+    'wp_user' => 'mariadb',
+    'wp_pass' => 'AnD0HD6sxBy4PEMmj4zs1A0jBXYLB8NLwV2giHJR8nzOVICP9tfJruIM8FxIYqjA',
+    'wp_prefix' => 'wp_',
+
+    // WordPress admin user ID for post author
+    'wp_author_id' => 1,
+
+    // Image handling
+    'old_image_domain' => 'storage.xposuredevlabs.com',
+    'new_image_domain' => 'storage.sfuturem.org',
+    'image_download_path' => '/tmp/wp-migration-images/',
+
+    // Languages
+    'languages' => ['en', 'ar'],
+    'default_language' => 'en',
+
+    // Reporting
+    'report_file' => 'migration_report.csv',
+    'log_file' => 'migration_log.txt',
+    'verbose' => true,
+];
+
 /**
  * Run all tests
  */
