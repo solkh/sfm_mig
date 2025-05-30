@@ -376,12 +376,13 @@ function createWordPressPost($article, $language)
 
         // Insert post
         $wpdb->query("INSERT INTO {$config['wp_prefix']}posts 
-            (post_title, post_content, post_name, post_date, post_date_gmt, 
+            (post_title, post_content, post_excerpt, post_name, post_date, post_date_gmt, 
              post_modified, post_modified_gmt, post_status, post_author, 
              post_type, comment_status, ping_status)
             VALUES 
             ('{$wpdb->escape_string($postData['post_title'])}', 
              '{$wpdb->escape_string($postData['post_content'])}', 
+             '', /* Add empty post_excerpt */
              '{$wpdb->escape_string($postData['post_name'])}', 
              '{$postData['post_date']}', 
              '{$postData['post_date_gmt']}', 
