@@ -15,6 +15,7 @@ namespace MongoWPMigration;
  * - Properly handles MongoDB date conversion
  * - Ensures posts are visible in WordPress admin dashboard
  * - Includes all required WordPress fields
+ * - Enhanced WPML translation linking with Elementor support
  */
 
 // Check if MongoDB extension is loaded
@@ -80,6 +81,9 @@ $config = [
     // Date filtering
     'import_date_filter' => '2025-03-11', // Only import posts created on or after this date (YYYY-MM-DD)
     'use_date_filter' => true, // Set to false to import all posts regardless of date
+
+    // Elementor support
+    'enable_elementor_support' => true, // Set to true to add Elementor meta fields
 ];
 
 // Initialize global variables
@@ -448,8 +452,13 @@ function createWordPressPost($article, $language)
             VALUES 
             ($postId, '_mongodb_id', '{$mongoId}')");
 
-        // Set WPML language
+        // Set WPML language with enhanced trid handling
         setPostLanguage($postId, $language);
+
+        // Add Elementor meta fields if enabled
+        if ($config['enable_elementor_support']) {
+            addElementorMeta($postId);
+        }
 
         // Process featured image
         if (isset($article['image'][$language])) {
@@ -484,8 +493,8 @@ function createWordPressPost($article, $language)
 
         // Add departments using the hardcoded mapping array
         if (isset($article['departments']) && is_array($article['departments'])) {
-            logMessage("Processing department: " . json_encode($office) . " for postId $postId");
             foreach ($article['departments'] as $department) {
+                logMessage("Processing department: " . json_encode($department) . " for postId $postId");
                 $departmentId = (string)$department;
                 if (isset($departmentMapping[$departmentId][$language]) && $departmentMapping[$departmentId][$language]) {
                     $termIds[] = $departmentMapping[$departmentId][$language];
@@ -546,7 +555,7 @@ function createWordPressTranslation($article, $language, $originalPostId, $origi
     $translationId = createWordPressPost($article, $language);
 
     if ($translationId) {
-        // Link translations
+        // Link translations with enhanced WPML support
         linkTranslations($originalPostId, $translationId, $originalLang, $language);
     }
 
@@ -554,35 +563,47 @@ function createWordPressTranslation($article, $language, $originalPostId, $origi
 }
 
 /**
- * Set post language in WPML
+ * Set post language in WPML with enhanced trid handling
  * 
  * @param int $postId WordPress post ID
  * @param string $language Language code
- * @return bool Success status
+ * @param string $elementType WPML element type (e.g., post_post, post_attachment)
+ * @return int|false The trid (translation ID) or false on failure
  */
-function setPostLanguage($postId, $language)
+function setPostLanguage($postId, $language, $elementType = 'post_post')
 {
     global $wpdb, $config;
 
     try {
         // Check if language is already set
-        $exists = mysqli_num_rows($wpdb->query("SELECT COUNT(*) FROM {$config['wp_prefix']}icl_translations 
-            WHERE element_id = $postId AND element_type = 'post_post'"));
+        $existingTranslation = mysqli_num_rows($wpdb->query("SELECT trid, language_code FROM {$config['wp_prefix']}icl_translations 
+            WHERE element_id = $postId AND element_type = '$elementType'"));
 
-        if ($exists) {
-            // Update existing language
-            $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
-                SET language_code = '$language' 
-                WHERE element_id = $postId AND element_type = 'post_post'");
+        logMessage("Found $existingTranslation existing translation for post ID $postId and element type $elementType");
+
+        if ($existingTranslation) {
+            // Update existing language if different
+            if ($existingTranslation->language_code !== $language) {
+                $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
+                    SET language_code = '$language' 
+                    WHERE element_id = $postId AND element_type = '$elementType'");
+            }
+            return $existingTranslation->trid;
         } else {
             // Insert new language entry
+            // Find the next available trid
+            $nextTrid = $wpdb->get_var("SELECT MAX(trid) + 1 FROM {$config['wp_prefix']}icl_translations");
+            if (!$nextTrid) {
+                $nextTrid = 1; // Start trid from 1 if table is empty
+            }
+
             $wpdb->query("INSERT INTO {$config['wp_prefix']}icl_translations 
                 (element_type, element_id, trid, language_code, source_language_code) 
                 VALUES 
-                ('post_post', $postId, NULL, '$language', NULL)");
-        }
+                ('$elementType', $postId, $nextTrid, '$language', NULL)");
 
-        return true;
+            return $nextTrid;
+        }
     } catch (\Exception $e) {
         logError("Failed to set post language: " . $e->getMessage());
         return false;
@@ -590,7 +611,7 @@ function setPostLanguage($postId, $language)
 }
 
 /**
- * Link translations in WPML
+ * Link translations in WPML with enhanced trid handling
  * 
  * @param int $postId1 First post ID
  * @param int $postId2 Second post ID
@@ -603,29 +624,59 @@ function linkTranslations($postId1, $postId2, $lang1, $lang2)
     global $wpdb, $config;
 
     try {
-        // Get translation row ID (trid) for first post
+        // Get translation row ID (trid) for the original post
         $trid = mysqli_num_rows($wpdb->query("SELECT trid FROM {$config['wp_prefix']}icl_translations 
             WHERE element_id = $postId1 AND element_type = 'post_post'"));
 
         if (!$trid) {
-            // Create new trid
-            $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
-                SET trid = (SELECT MAX(trid) + 1 FROM {$config['wp_prefix']}icl_translations) 
-                WHERE element_id = $postId1 AND element_type = 'post_post'");
-
-            $trid = mysqli_num_rows($wpdb->query("SELECT trid FROM {$config['wp_prefix']}icl_translations 
-                WHERE element_id = $postId1 AND element_type = 'post_post'"));
+            logError("Could not find trid for original post ID: $postId1");
+            // Attempt to set language again to create trid
+            $trid = setPostLanguage($postId1, $lang1);
+            if (!$trid) {
+                throw new \Exception("Failed to create trid for original post ID: $postId1");
+            }
         }
 
-        // Update second post with same trid and source language
+        // Update the translation post with the same trid and the source language code
         $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
             SET trid = $trid, source_language_code = '$lang1' 
             WHERE element_id = $postId2 AND element_type = 'post_post'");
+
+        logMessage("Linked translation: Post $postId2 ($lang2) to Post $postId1 ($lang1) with trid $trid");
 
         return true;
     } catch (\Exception $e) {
         logError("Failed to link translations: " . $e->getMessage());
         return false;
+    }
+}
+
+/**
+ * Add Elementor meta fields to a post
+ * 
+ * @param int $postId WordPress post ID
+ */
+function addElementorMeta($postId)
+{
+    global $wpdb, $config;
+
+    try {
+        $elementorMeta = [
+            '_elementor_edit_mode' => 'builder',
+            '_elementor_template_type' => 'wp-post',
+            '_elementor_version' => '3.13.3', // Use a reasonable default version
+            '_elementor_data' => '[]' // Start with empty Elementor data
+        ];
+
+        foreach ($elementorMeta as $key => $value) {
+            $wpdb->query("INSERT INTO {$config['wp_prefix']}postmeta 
+                (post_id, meta_key, meta_value) 
+                VALUES 
+                ($postId, '$key', '{$wpdb->escape_string($value)}')");
+        }
+        logMessage("Added Elementor meta fields for post ID: $postId");
+    } catch (\Exception $e) {
+        logError("Failed to add Elementor meta fields: " . $e->getMessage());
     }
 }
 
@@ -761,8 +812,8 @@ function processAndAttachImage($imageUrl, $postId, $language, $postDate)
             VALUES 
             ($attachmentId, '{$config['import_tag_meta_key']}', '{$config['import_tag_meta_value']}')");
 
-        // Set WPML language for attachment
-        setPostLanguage($attachmentId, $language);
+        // Set WPML language for attachment with proper element type
+        setPostLanguage($attachmentId, $language, 'post_attachment');
 
         return $attachmentId;
     } catch (\Exception $e) {
@@ -1014,7 +1065,7 @@ function deleteImportedPosts($importTag = null)
         $wpdb->query("DELETE FROM {$config['wp_prefix']}postmeta WHERE post_id = $postId");
 
         // Delete from WPML tables
-        $wpdb->query("DELETE FROM {$config['wp_prefix']}icl_translations WHERE element_id = $postId AND element_type = 'post_post'");
+        $wpdb->query("DELETE FROM {$config['wp_prefix']}icl_translations WHERE element_id = $postId AND element_type LIKE 'post_%'");
 
         // Delete term relationships
         $wpdb->query("DELETE FROM {$config['wp_prefix']}term_relationships WHERE object_id = $postId");
