@@ -641,6 +641,32 @@ function processAndAttachImage($imageUrl, $postId, $language)
              $postId, 
              '{$wpdb->escape_string($imageUrl)}')");
 
+
+        $wpdb->query("INSERT INTO {$config['wp_prefix']}posts 
+            (post_title, post_content, post_excerpt, to_ping, pinged, post_content_filtered, post_name, post_date, post_date_gmt, 
+             post_modified, post_modified_gmt, post_status, post_author, 
+             post_type, comment_status, ping_status, post_mime_type, post_parent, guid)
+            VALUES 
+            ('{$wpdb->escape_string($attachment['post_title'])}', 
+             '{$attachment['post_content']}', 
+             '', /* Add empty post_excerpt */
+             '', /* Add empty to_ping */
+             '', /* Add empty pinged */
+             '', /* Add empty post_content_filtered */
+             '{$wpdb->escape_string($postData['post_name'])}', 
+             '{$postData['post_date']}', 
+             '{$postData['post_date_gmt']}', 
+             '{$postData['post_modified']}', 
+             '{$postData['post_modified_gmt']}', 
+             '{$postData['post_status']}', 
+             {$postData['post_author']}, 
+             'attachment', 
+             '{$postData['comment_status']}', 
+             '{$postData['ping_status']}'
+             '{$attachment['post_mime_type']}', 
+             $postId, 
+             '{$wpdb->escape_string($imageUrl)}')");
+
         $attachmentId = $wpdb->insert_id;
 
         if (!$attachmentId) {
