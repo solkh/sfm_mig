@@ -1,5 +1,7 @@
 <?php
 
+namespace MongoWPMigration;
+
 /**
  * MongoDB to WordPress Migration Script
  * 
@@ -402,7 +404,7 @@ function createWordPressPost($article, $language)
             (post_id, meta_key, meta_value) 
             VALUES 
             ($postId, '{$config['import_tag_meta_key']}', '{$config['import_tag_meta_value']}')");
-        
+
         // Add MongoDB ID as meta for reference
         $mongoId = (string)$article['_id'];
         $wpdb->query("INSERT INTO {$config['wp_prefix']}postmeta 
