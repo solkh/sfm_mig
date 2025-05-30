@@ -422,7 +422,7 @@ function createWordPressPost($article, $language)
         // Process featured image
         if (isset($article['image'][$language])) {
             $imageUrl = $article['image'][$language];
-            $imageId = processAndAttachImage($imageUrl, $postId, $language);
+            $imageId = processAndAttachImage($imageUrl, $postId, $language, $postData['post_date']);
 
             if ($imageId) {
                 // Set as featured image
@@ -603,7 +603,7 @@ function linkTranslations($postId1, $postId2, $lang1, $lang2)
  * @param string $language Language code
  * @return int|false WordPress attachment ID or false on failure
  */
-function processAndAttachImage($imageUrl, $postId, $language)
+function processAndAttachImage($imageUrl, $postId, $language, $date)
 {
     global $wpdb, $config;
 
@@ -631,6 +631,18 @@ function processAndAttachImage($imageUrl, $postId, $language)
 
         // Insert attachment
         $wpdb->query("INSERT INTO {$config['wp_prefix']}posts 
+            (post_title, post_content, post_mime_type, post_status, post_type, post_parent, guid) 
+            VALUES 
+            ('{$wpdb->escape_string($attachment['post_title'])}', 
+             '{$attachment['post_content']}', 
+             '{$attachment['post_mime_type']}', 
+             '{$attachment['post_status']}', 
+             'attachment', 
+             $postId, 
+             '{$wpdb->escape_string($imageUrl)}')");
+
+
+        $wpdb->query("INSERT INTO {$config['wp_prefix']}posts 
             (post_title, post_content, post_excerpt, to_ping, pinged, post_content_filtered, post_name, post_date, post_date_gmt, 
              post_modified, post_modified_gmt, post_status, post_author, 
              post_type, comment_status, ping_status, post_mime_type, post_parent, guid)
@@ -641,16 +653,16 @@ function processAndAttachImage($imageUrl, $postId, $language)
              '', /* Add empty to_ping */
              '', /* Add empty pinged */
              '', /* Add empty post_content_filtered */
-             '{$wpdb->escape_string($postData['post_name'])}', 
-             '{$postData['post_date']}', 
-             '{$postData['post_date_gmt']}', 
-             '{$postData['post_modified']}', 
-             '{$postData['post_modified_gmt']}', 
-             '{$postData['post_status']}', 
-             {$postData['post_author']}, 
+             '', 
+             '{$date}', 
+             '{$date}', 
+             '{$date}', 
+             '{$date}', 
+             'inherit', 
+             {$config['wp_author_id']}, 
              'attachment', 
-             '{$postData['comment_status']}', 
-             '{$postData['ping_status']}'
+             'closed', 
+             'closed'
              '{$attachment['post_mime_type']}', 
              $postId, 
              '{$wpdb->escape_string($imageUrl)}')");
