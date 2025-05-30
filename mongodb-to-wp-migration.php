@@ -380,9 +380,9 @@ function createWordPressPost($article, $language)
              post_modified, post_modified_gmt, post_status, post_author, 
              post_type, comment_status, ping_status)
             VALUES 
-            ('{$wpdb->escape($postData['post_title'])}', 
-             '{$wpdb->escape($postData['post_content'])}', 
-             '{$wpdb->escape($postData['post_name'])}', 
+            ('{$wpdb->escape_string($postData['post_title'])}', 
+             '{$wpdb->escape_string($postData['post_content'])}', 
+             '{$wpdb->escape_string($postData['post_name'])}', 
              '{$postData['post_date']}', 
              '{$postData['post_date_gmt']}', 
              '{$postData['post_modified']}', 
@@ -629,13 +629,13 @@ function processAndAttachImage($imageUrl, $postId, $language)
         $wpdb->query("INSERT INTO {$config['wp_prefix']}posts 
             (post_title, post_content, post_mime_type, post_status, post_type, post_parent, guid) 
             VALUES 
-            ('{$wpdb->escape($attachment['post_title'])}', 
+            ('{$wpdb->escape_string($attachment['post_title'])}', 
              '{$attachment['post_content']}', 
              '{$attachment['post_mime_type']}', 
              '{$attachment['post_status']}', 
              'attachment', 
              $postId, 
-             '{$wpdb->escape($imageUrl)}')");
+             '{$wpdb->escape_string($imageUrl)}')");
 
         $attachmentId = $wpdb->insert_id;
 
@@ -669,7 +669,7 @@ function processAndAttachImage($imageUrl, $postId, $language)
             $wpdb->query("INSERT INTO {$config['wp_prefix']}postmeta 
                 (post_id, meta_key, meta_value) 
                 VALUES 
-                ($attachmentId, '$key', '{$wpdb->escape($value)}')");
+                ($attachmentId, '$key', '{$wpdb->escape_string($value)}')");
         }
 
         // Tag attachment as imported
