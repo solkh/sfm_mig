@@ -358,24 +358,7 @@ function processArticle($article)
  */
 function convertMongoDateToMysql($mongoDate)
 {
-    if (!isset($mongoDate)) {
-        throw new \Exception("Invalid MongoDB date format");
-    }
-
-    // Check if it's milliseconds timestamp (integer) or ISO string
-    if (is_int($mongoDate)) {
-        // It's a milliseconds timestamp
-        $timestamp = floor($mongoDate / 1000); // Convert milliseconds to seconds
-    } else {
-        // It's an ISO date string
-        $timestamp = strtotime($mongoDate->toDateTime());
-    }
-
-    if (!$timestamp) {
-        throw new \Exception("Failed to parse MongoDB date: " . json_encode($mongoDate));
-    }
-
-    return date('Y-m-d H:i:s', $timestamp);
+    return $mongoDate->toDateTime()->format('Y-m-d H:i:s');
 }
 
 /**
