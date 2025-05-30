@@ -452,7 +452,7 @@ function createWordPressPost($article, $language)
             VALUES 
             ($postId, '_mongodb_id', '{$mongoId}')");
 
-        // Set WPML language with enhanced translation_id handling
+        // Set WPML language with enhanced trid handling
         setPostLanguage($postId, $language);
 
         // Add Elementor meta fields if enabled
@@ -563,12 +563,12 @@ function createWordPressTranslation($article, $language, $originalPostId, $origi
 }
 
 /**
- * Set post language in WPML with enhanced translation_id handling
+ * Set post language in WPML with enhanced trid handling
  * 
  * @param int $postId WordPress post ID
  * @param string $language Language code
  * @param string $elementType WPML element type (e.g., post_post, post_attachment)
- * @return int|false The translation_id (translation ID) or false on failure
+ * @return int|false The trid (translation ID) or false on failure
  */
 function setPostLanguage($postId, $language, $elementType = 'post_post')
 {
@@ -576,7 +576,7 @@ function setPostLanguage($postId, $language, $elementType = 'post_post')
 
     try {
         // Check if language is already set
-        $existingTranslation = $wpdb->query("SELECT translation_id, language_code FROM {$config['wp_prefix']}icl_translations 
+        $existingTranslation = $wpdb->query("SELECT trid, language_code FROM {$config['wp_prefix']}icl_translations 
             WHERE element_id = $postId AND element_type = '$elementType'")->fetch_object();
 
         logMessage("Found $existingTranslation existing translation for post ID $postId and element type $elementType");
@@ -588,21 +588,21 @@ function setPostLanguage($postId, $language, $elementType = 'post_post')
                     SET language_code = '$language' 
                     WHERE element_id = $postId AND element_type = '$elementType'");
             }
-            return $existingTranslation->translation_id;
+            return $existingTranslation->trid;
         } else {
             // Insert new language entry
-            // Find the next available translation_id
-            $nexttranslation_id = $wpdb->query("SELECT MAX(translation_id) + 1 FROM {$config['wp_prefix']}icl_translations")->fetch_row()[0];
-            if (!$nexttranslation_id) {
-                $nexttranslation_id = 1; // Start translation_id from 1 if table is empty
+            // Find the next available trid
+            $nexttrid = $wpdb->query("SELECT MAX(trid) + 1 FROM {$config['wp_prefix']}icl_translations")->fetch_row()[0];
+            if (!$nexttrid) {
+                $nexttrid = 1; // Start trid from 1 if table is empty
             }
 
             $wpdb->query("INSERT INTO {$config['wp_prefix']}icl_translations 
-                (element_type, element_id, translation_id, language_code, source_language_code) 
+                (element_type, element_id, trid, language_code, source_language_code) 
                 VALUES 
-                ('$elementType', $postId, $nexttranslation_id, '$language', NULL)");
+                ('$elementType', $postId, $nexttrid, '$language', NULL)");
 
-            return $nexttranslation_id;
+            return $nexttrid;
         }
     } catch (\Exception $e) {
         logError("Failed to set post language: " . $e->getMessage());
@@ -611,7 +611,7 @@ function setPostLanguage($postId, $language, $elementType = 'post_post')
 }
 
 /**
- * Link translations in WPML with enhanced translation_id handling
+ * Link translations in WPML with enhanced trid handling
  * 
  * @param int $postId1 First post ID
  * @param int $postId2 Second post ID
@@ -624,25 +624,25 @@ function linkTranslations($postId1, $postId2, $lang1, $lang2)
     global $wpdb, $config;
 
     try {
-        // Get translation row ID (translation_id) for the original post
-        $translation_id = $wpdb->query("SELECT translation_id FROM {$config['wp_prefix']}icl_translations 
+        // Get translation row ID (trid) for the original post
+        $trid = $wpdb->query("SELECT trid FROM {$config['wp_prefix']}icl_translations 
             WHERE element_id = $postId1 AND element_type = 'post_post'")->fetch_row()[0];
 
-        if (!$translation_id) {
-            logError("Could not find translation_id for original post ID: $postId1");
-            // Attempt to set language again to create translation_id
-            $translation_id = setPostLanguage($postId1, $lang1);
-            if (!$translation_id) {
-                throw new \Exception("Failed to create translation_id for original post ID: $postId1");
+        if (!$trid) {
+            logError("Could not find trid for original post ID: $postId1");
+            // Attempt to set language again to create trid
+            $trid = setPostLanguage($postId1, $lang1);
+            if (!$trid) {
+                throw new \Exception("Failed to create trid for original post ID: $postId1");
             }
         }
 
-        // Update the translation post with the same translation_id and the source language code
+        // Update the translation post with the same trid and the source language code
         $wpdb->query("UPDATE {$config['wp_prefix']}icl_translations 
-            SET translation_id = $translation_id, source_language_code = '$lang1' 
+            SET trid = $trid, source_language_code = '$lang1' 
             WHERE element_id = $postId2 AND element_type = 'post_post'");
 
-        logMessage("Linked translation: Post $postId2 ($lang2) to Post $postId1 ($lang1) with translation_id $translation_id");
+        logMessage("Linked translation: Post $postId2 ($lang2) to Post $postId1 ($lang1) with trid $trid");
 
         return true;
     } catch (\Exception $e) {
