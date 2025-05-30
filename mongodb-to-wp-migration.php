@@ -631,18 +631,6 @@ function processAndAttachImage($imageUrl, $postId, $language, $date)
 
         // Insert attachment
         $wpdb->query("INSERT INTO {$config['wp_prefix']}posts 
-            (post_title, post_content, post_mime_type, post_status, post_type, post_parent, guid) 
-            VALUES 
-            ('{$wpdb->escape_string($attachment['post_title'])}', 
-             '{$attachment['post_content']}', 
-             '{$attachment['post_mime_type']}', 
-             '{$attachment['post_status']}', 
-             'attachment', 
-             $postId, 
-             '{$wpdb->escape_string($imageUrl)}')");
-
-
-        $wpdb->query("INSERT INTO {$config['wp_prefix']}posts 
             (post_title, post_content, post_excerpt, to_ping, pinged, post_content_filtered, post_name, post_date, post_date_gmt, 
              post_modified, post_modified_gmt, post_status, post_author, 
              post_type, comment_status, ping_status, post_mime_type, post_parent, guid)
